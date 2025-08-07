@@ -167,7 +167,7 @@ type Server interface {
 	ResolveWorkspaceSymbol(context.Context, *WorkspaceSymbol) (*WorkspaceSymbol, error)
 }
 
-func serverDispatchExp(ctx context.Context, server Server, req *jsonrpc2.Request) (interface{}, error) {
+func serverDispatch(ctx context.Context, server Server, req *jsonrpc2.Request) (interface{}, error) {
 	switch req.Method {
 	case "$/progress":
 		var params ProgressParams

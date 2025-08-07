@@ -104,7 +104,7 @@ func writeclient() {
 		out.WriteString(cdecls[k])
 	}
 	out.WriteString("}\n\n")
-	out.WriteString(`func clientDispatchExp(ctx context.Context, client Client, req *jsonrpc2.Request) (interface{}, error) {
+	out.WriteString(`func clientDispatch(ctx context.Context, client Client, req *jsonrpc2.Request) (interface{}, error) {
 	switch req.Method {
 `)
 	for _, k := range ccases.keys() {
@@ -134,7 +134,7 @@ func writeserver() {
 	out.WriteString(`
 }
 
-func serverDispatchExp(ctx context.Context, server Server, req *jsonrpc2.Request) (interface{}, error) {
+func serverDispatch(ctx context.Context, server Server, req *jsonrpc2.Request) (interface{}, error) {
 	switch req.Method {
 `)
 	for _, k := range scases.keys() {
