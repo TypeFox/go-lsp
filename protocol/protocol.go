@@ -14,6 +14,7 @@ import (
 	"github.com/TypeFox/go-lsp/internal/event"
 	"github.com/TypeFox/go-lsp/internal/jsonrpc2"
 	jsonrpc2_v2 "github.com/TypeFox/go-lsp/internal/jsonrpc2_v2"
+	jsonrpc2_exp "golang.org/x/exp/jsonrpc2"
 	"github.com/TypeFox/go-lsp/internal/xcontext"
 )
 
@@ -149,6 +150,15 @@ func ClientHandlerV2(client Client) jsonrpc2_v2.Handler {
 	})
 }
 
+func ClientHandlerExp(client Client) jsonrpc2_exp.HandlerFunc {
+	return func(ctx context.Context, req *jsonrpc2_exp.Request) (any, error) {
+		if ctx.Err() != nil {
+			return nil, jsonrpc2_exp.ErrInternal
+		}
+		return clientDispatchExp(ctx, client, req)
+	}
+}
+
 func ServerHandler(server Server, handler jsonrpc2.Handler) jsonrpc2.Handler {
 	return func(ctx context.Context, reply jsonrpc2.Replier, req jsonrpc2.Request) error {
 		if ctx.Err() != nil {
@@ -187,6 +197,15 @@ func ServerHandlerV2(server Server) jsonrpc2_v2.Handler {
 		}
 		return result, resErr
 	})
+}
+
+func ServerHandlerExp(server Server) jsonrpc2_exp.HandlerFunc {
+	return func(ctx context.Context, req *jsonrpc2_exp.Request) (any, error) {
+		if ctx.Err() != nil {
+			return nil, jsonrpc2_exp.ErrInternal
+		}
+		return serverDispatchExp(ctx, server, req)
+	}
 }
 
 func req2to1(req2 *jsonrpc2_v2.Request) jsonrpc2.Request {
@@ -294,4 +313,13 @@ func NonNilSlice[T comparable](x []T) []T {
 		return []T{}
 	}
 	return x
+}
+
+// Legacy dispatch functions for backward compatibility - these always return "not handled"
+func clientDispatch(ctx context.Context, client Client, reply jsonrpc2.Replier, req jsonrpc2.Request) (bool, error) {
+	return false, nil // not handled - use ClientHandlerExp for new golang.org/x/exp/jsonrpc2 API
+}
+
+func serverDispatch(ctx context.Context, server Server, reply jsonrpc2.Replier, req jsonrpc2.Request) (bool, error) {
+	return false, nil // not handled - use ServerHandlerExp for new golang.org/x/exp/jsonrpc2 API
 }

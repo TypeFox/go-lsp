@@ -96,7 +96,7 @@ func writeclient() {
 		`import (
 	"context"
 
-	"github.com/TypeFox/go-lsp/internal/jsonrpc2"
+	"golang.org/x/exp/jsonrpc2"
 )
 `)
 	out.WriteString("type Client interface {\n")
@@ -104,13 +104,13 @@ func writeclient() {
 		out.WriteString(cdecls[k])
 	}
 	out.WriteString("}\n\n")
-	out.WriteString(`func clientDispatch(ctx context.Context, client Client, reply jsonrpc2.Replier, r jsonrpc2.Request) (bool, error) {
-	switch r.Method() {
+	out.WriteString(`func clientDispatchExp(ctx context.Context, client Client, req *jsonrpc2.Request) (interface{}, error) {
+	switch req.Method {
 `)
 	for _, k := range ccases.keys() {
 		out.WriteString(ccases[k])
 	}
-	out.WriteString(("\tdefault:\n\t\treturn false, nil\n\t}\n}\n\n"))
+	out.WriteString(("\tdefault:\n\t\treturn nil, jsonrpc2.ErrMethodNotFound\n\t}\n}\n\n"))
 	for _, k := range cfuncs.keys() {
 		out.WriteString(cfuncs[k])
 	}
@@ -124,7 +124,7 @@ func writeserver() {
 		`import (
 	"context"
 
-	"github.com/TypeFox/go-lsp/internal/jsonrpc2"
+	"golang.org/x/exp/jsonrpc2"
 )
 `)
 	out.WriteString("type Server interface {\n")
@@ -134,13 +134,13 @@ func writeserver() {
 	out.WriteString(`
 }
 
-func serverDispatch(ctx context.Context, server Server, reply jsonrpc2.Replier, r jsonrpc2.Request) (bool, error) {
-	switch r.Method() {
+func serverDispatchExp(ctx context.Context, server Server, req *jsonrpc2.Request) (interface{}, error) {
+	switch req.Method {
 `)
 	for _, k := range scases.keys() {
 		out.WriteString(scases[k])
 	}
-	out.WriteString(("\tdefault:\n\t\treturn false, nil\n\t}\n}\n\n"))
+	out.WriteString(("\tdefault:\n\t\treturn nil, jsonrpc2.ErrMethodNotFound\n\t}\n}\n\n"))
 	for _, k := range sfuncs.keys() {
 		out.WriteString(sfuncs[k])
 	}
