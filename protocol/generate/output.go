@@ -100,19 +100,19 @@ func genCase(_ *Model, method string, param, result *Type, dir string) {
 			nm = "ParamConfiguration" // gopls compatibility
 		}
 		fmt.Fprintf(out, "\t\tvar params %s\n", nm)
-		fmt.Fprintf(out, "\t\tif err := UnmarshalJSON(r.Params(), &params); err != nil {\n")
-		fmt.Fprintf(out, "\t\t\treturn true, sendParseError(ctx, reply, err)\n\t\t}\n")
+		fmt.Fprintf(out, "\t\tif err := UnmarshalJSON(req.Params, &params); err != nil {\n")
+		fmt.Fprintf(out, "\t\t\treturn nil, err\n\t\t}\n")
 		p = ", &params"
 	}
 	if notNil(result) {
 		fmt.Fprintf(out, "\t\tresp, err := %%s.%s(ctx%s)\n", fname, p)
 		out.WriteString("\t\tif err != nil {\n")
-		out.WriteString("\t\t\treturn true, reply(ctx, nil, err)\n")
+		out.WriteString("\t\t\treturn nil, err\n")
 		out.WriteString("\t\t}\n")
-		out.WriteString("\t\treturn true, reply(ctx, resp, nil)\n")
+		out.WriteString("\t\treturn resp, nil\n")
 	} else {
 		fmt.Fprintf(out, "\t\terr := %%s.%s(ctx%s)\n", fname, p)
-		out.WriteString("\t\treturn true, reply(ctx, nil, err)\n")
+		out.WriteString("\t\treturn nil, err\n")
 	}
 	out.WriteString("\n")
 	msg := out.String()
