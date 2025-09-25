@@ -7,18 +7,97 @@ package protocol
 import (
 	"fmt"
 	"slices"
-
-	"github.com/TypeFox/go-lsp/internal/diff"
+	"sort"
 )
 
-// EditsFromDiffEdits converts diff.Edits to a non-nil slice of LSP TextEdits.
+// Edit describes the replacement of a portion of a text file.
+type Edit struct {
+	Start, End int    // byte offsets of the region to replace
+	New        string // the replacement
+}
+
+// apply applies a sequence of edits to the src buffer and returns the
+// result. Edits are applied in order of start offset; edits with the
+// same start offset are applied in they order they were provided.
+func apply(src string, edits []Edit) (string, error) {
+	edits, size, err := validate(src, edits)
+	if err != nil {
+		return "", err
+	}
+
+	// Apply edits.
+	out := make([]byte, 0, size)
+	lastEnd := 0
+	for _, edit := range edits {
+		if lastEnd < edit.Start {
+			out = append(out, src[lastEnd:edit.Start]...)
+		}
+		out = append(out, edit.New...)
+		lastEnd = edit.End
+	}
+	out = append(out, src[lastEnd:]...)
+
+	if len(out) != size {
+		panic("wrong size")
+	}
+	return string(out), nil
+}
+
+// applyBytes is like apply, but it accepts a byte slice.
+func applyBytes(src []byte, edits []Edit) ([]byte, error) {
+	res, err := apply(string(src), edits)
+	return []byte(res), err
+}
+
+// validate checks that edits are consistent with src,
+// and returns the size of the patched output.
+func validate(src string, edits []Edit) ([]Edit, int, error) {
+	if !sort.IsSorted(editsSort(edits)) {
+		edits = slices.Clone(edits)
+		sortEdits(edits)
+	}
+
+	// Check validity of edits and compute final size.
+	size := len(src)
+	lastEnd := 0
+	for _, edit := range edits {
+		if !(0 <= edit.Start && edit.Start <= edit.End && edit.End <= len(src)) {
+			return nil, 0, fmt.Errorf("diff has out-of-bounds edits")
+		}
+		if edit.Start < lastEnd {
+			return nil, 0, fmt.Errorf("diff has overlapping edits")
+		}
+		size += len(edit.New) + edit.Start - edit.End
+		lastEnd = edit.End
+	}
+
+	return edits, size, nil
+}
+
+// sortEdits orders a slice of Edits by (start, end) offset.
+func sortEdits(edits []Edit) {
+	sort.Stable(editsSort(edits))
+}
+
+type editsSort []Edit
+
+func (a editsSort) Len() int { return len(a) }
+func (a editsSort) Less(i, j int) bool {
+	if cmp := a[i].Start - a[j].Start; cmp != 0 {
+		return cmp < 0
+	}
+	return a[i].End < a[j].End
+}
+func (a editsSort) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+// EditsFromDiffEdits converts Edits to a non-nil slice of LSP TextEdits.
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textEditArray
-func EditsFromDiffEdits(m *Mapper, edits []diff.Edit) ([]TextEdit, error) {
+func EditsFromDiffEdits(m *Mapper, edits []Edit) ([]TextEdit, error) {
 	// LSP doesn't require TextEditArray to be sorted:
 	// this is the receiver's concern. But govim, and perhaps
 	// other clients have historically relied on the order.
 	edits = slices.Clone(edits)
-	diff.SortEdits(edits)
+	sortEdits(edits)
 
 	result := make([]TextEdit, len(edits))
 	for i, edit := range edits {
@@ -34,19 +113,19 @@ func EditsFromDiffEdits(m *Mapper, edits []diff.Edit) ([]TextEdit, error) {
 	return result, nil
 }
 
-// EditsToDiffEdits converts LSP TextEdits to diff.Edits.
+// EditsToDiffEdits converts LSP TextEdits to Edits.
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textEditArray
-func EditsToDiffEdits(m *Mapper, edits []TextEdit) ([]diff.Edit, error) {
+func EditsToDiffEdits(m *Mapper, edits []TextEdit) ([]Edit, error) {
 	if edits == nil {
 		return nil, nil
 	}
-	result := make([]diff.Edit, len(edits))
+	result := make([]Edit, len(edits))
 	for i, edit := range edits {
 		start, end, err := m.RangeOffsets(edit.Range)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = diff.Edit{
+		result[i] = Edit{
 			Start: start,
 			End:   end,
 			New:   edit.NewText,
@@ -56,13 +135,13 @@ func EditsToDiffEdits(m *Mapper, edits []TextEdit) ([]diff.Edit, error) {
 }
 
 // ApplyEdits applies the patch (edits) to m.Content and returns the result.
-// It also returns the edits converted to diff-package form.
-func ApplyEdits(m *Mapper, edits []TextEdit) ([]byte, []diff.Edit, error) {
+// It also returns the edits converted to Edit form.
+func ApplyEdits(m *Mapper, edits []TextEdit) ([]byte, []Edit, error) {
 	diffEdits, err := EditsToDiffEdits(m, edits)
 	if err != nil {
 		return nil, nil, err
 	}
-	out, err := diff.ApplyBytes(m.Content, diffEdits)
+	out, err := applyBytes(m.Content, diffEdits)
 	return out, diffEdits, err
 }
 
