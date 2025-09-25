@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"golang.org/x/exp/jsonrpc2"
@@ -75,7 +74,7 @@ func (c clientConn) Call(ctx context.Context, method string, params any, result 
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
 		detached := detach(ctx)
-		c.conn.Notify(detached, "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
+		_ = c.conn.Notify(detached, "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
 	}
 	return err
 }
@@ -112,32 +111,12 @@ func Call(ctx context.Context, conn *jsonrpc2.Connection, method string, params 
 	call := conn.Call(ctx, method, params)
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
-		conn.Notify(detach(ctx), "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
+		_ = conn.Notify(detach(ctx), "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
 	}
 	return err
 }
 
-func cancelCall(ctx context.Context, sender connSender, id any) {
-	if ctx.Err() == nil {
-		return
-	}
-	ctx = detach(ctx)
-	// Note that only *jsonrpc2.ID implements json.Marshaler.
-	sender.Notify(ctx, "$/cancelRequest", &CancelParams{ID: id})
-}
 
-func writeError(ctx context.Context, err error) error {
-	if err == nil {
-		log.Printf("jsonrpc2 internal error: null error")
-		err = jsonrpc2.ErrInternal
-	}
-	log.Printf("jsonrpc2 error: %v", err)
-	return err
-}
-
-func sendParseError(ctx context.Context, err error) error {
-	return writeError(ctx, fmt.Errorf("%w: %s", jsonrpc2.ErrParse, err))
-}
 
 // UnmarshalJSON unmarshals msg into the variable pointed to by
 // params. In JSONRPC, optional messages may be

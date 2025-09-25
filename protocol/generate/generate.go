@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"unicode"
 )
 
 // a newType is a type that needs a name and a definition
@@ -114,8 +115,17 @@ func goName(s string) string {
 		s = strings.Replace(s, "_", "X", 1)
 	}
 	if s != "string" { // base types are unchanged (textDocuemnt/diagnostic)
-		// Title is deprecated, but a) s is only one word, b) replacement is too heavy-weight
-		s = strings.Title(s)
+		s = title(s)
 	}
 	return s
+}
+
+// title capitalizes the first letter of a string (replacement for deprecated strings.Title)
+func title(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
 }
