@@ -136,7 +136,7 @@ func (m *Mapper) LineCol8Position(line, col8 int) (Position, error) {
 
 	m.initLines()
 	line0 := line - 1 // 0-based
-	if !(0 <= line0 && line0 < len(m.lineStart)) {
+	if line0 < 0 || line0 >= len(m.lineStart) {
 		return Position{}, fmt.Errorf("line number %d out of range (max %d)", line, len(m.lineStart))
 	}
 
@@ -184,7 +184,7 @@ func (m *Mapper) OffsetRange(start, end int) (Range, error) {
 
 // OffsetPosition converts a byte offset to a protocol (UTF-16) position.
 func (m *Mapper) OffsetPosition(offset int) (Position, error) {
-	if !(0 <= offset && offset <= len(m.Content)) {
+	if offset < 0 || offset > len(m.Content) {
 		return Position{}, fmt.Errorf("invalid offset %d (want 0-%d)", offset, len(m.Content))
 	}
 	// No error may be returned after this point,

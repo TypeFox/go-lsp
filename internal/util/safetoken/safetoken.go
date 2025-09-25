@@ -61,7 +61,7 @@ func Offsets(f *token.File, start, end token.Pos) (int, int, error) {
 // Pos returns f.Pos(offset), but first checks that the offset is
 // non-negative and not larger than the size of the file.
 func Pos(f *token.File, offset int) (token.Pos, error) {
-	if !(0 <= offset && offset <= f.Size()) {
+	if offset < 0 || offset > f.Size() {
 		return token.NoPos, fmt.Errorf("offset %d is not in range for file %s of size %d", offset, f.Name(), f.Size())
 	}
 	return token.Pos(f.Base() + offset), nil

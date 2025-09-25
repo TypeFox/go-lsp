@@ -96,7 +96,7 @@ func Intersect(x, y Range) bool {
 // Note: Formatter is implemented instead of Stringer (presumably) for
 // performance reasons, though it is not clear that it matters in practice.
 func (r Range) Format(f fmt.State, _ rune) {
-	fmt.Fprintf(f, "%v-%v", r.Start, r.End)
+	_, _ = fmt.Fprintf(f, "%v-%v", r.Start, r.End)
 }
 
 // Format implements fmt.Formatter.
@@ -104,7 +104,7 @@ func (r Range) Format(f fmt.State, _ rune) {
 // See Range.Format for discussion of why the Formatter interface is
 // implemented rather than Stringer.
 func (p Position) Format(f fmt.State, _ rune) {
-	fmt.Fprintf(f, "%v:%v", p.Line, p.Character)
+	_, _ = fmt.Fprintf(f, "%v:%v", p.Line, p.Character)
 }
 
 // -- implementation helpers --

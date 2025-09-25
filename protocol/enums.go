@@ -128,9 +128,9 @@ func formatEnum(f fmt.State, i int, names []string, unknown string) {
 		s = names[i]
 	}
 	if s != "" {
-		fmt.Fprint(f, s)
+		_, _ = fmt.Fprint(f, s)
 	} else {
-		fmt.Fprintf(f, "%s(%d)", unknown, i)
+		_, _ = fmt.Fprintf(f, "%s(%d)", unknown, i)
 	}
 }
 
