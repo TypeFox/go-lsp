@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode"
-
-	"github.com/TypeFox/go-lsp/internal/util/pathutil"
 )
 
 // A DocumentURI is the URI of a client editor document.
@@ -112,7 +110,44 @@ func (uri DocumentURI) DirPath() string {
 // Encloses reports whether uri's path, considered as a sequence of segments,
 // is a prefix of file's path.
 func (uri DocumentURI) Encloses(file DocumentURI) bool {
-	return pathutil.InDir(uri.Path(), file.Path())
+	return inDir(uri.Path(), file.Path())
+}
+
+// inDir checks whether path is in the file tree rooted at dir.
+// It checks only the lexical form of the file names.
+// It does not consider symbolic links.
+func inDir(dir, path string) bool {
+	pv := strings.ToUpper(filepath.VolumeName(path))
+	dv := strings.ToUpper(filepath.VolumeName(dir))
+	path = path[len(pv):]
+	dir = dir[len(dv):]
+	switch {
+	default:
+		return false
+	case pv != dv:
+		return false
+	case len(path) == len(dir):
+		if path == dir {
+			return true
+		}
+		return false
+	case dir == "":
+		return path != ""
+	case len(path) > len(dir):
+		if dir[len(dir)-1] == filepath.Separator {
+			if path[:len(dir)] == dir {
+				return path[len(dir):] != ""
+			}
+			return false
+		}
+		if path[len(dir)] == filepath.Separator && path[:len(dir)] == dir {
+			if len(path) == len(dir)+1 {
+				return true
+			}
+			return path[len(dir)+1:] != ""
+		}
+		return false
+	}
 }
 
 // Location returns the Location for the specified range of this URI's file.

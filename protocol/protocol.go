@@ -10,16 +10,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"time"
 
-	"github.com/TypeFox/go-lsp/internal/event"
 	"golang.org/x/exp/jsonrpc2"
-	"github.com/TypeFox/go-lsp/internal/xcontext"
 )
 
 var (
 	// RequestCancelledError should be used when a request is cancelled early.
 	RequestCancelledError = jsonrpc2.NewError(-32800, "JSON RPC cancelled")
 )
+
+// detach returns a context that keeps all the values of its parent context
+// but detaches from the cancellation and error handling.
+func detach(ctx context.Context) context.Context { return detachedContext{ctx} }
+
+type detachedContext struct{ parent context.Context }
+
+func (v detachedContext) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (v detachedContext) Done() <-chan struct{}       { return nil }
+func (v detachedContext) Err() error                  { return nil }
+func (v detachedContext) Value(key any) any           { return v.parent.Value(key) }
 
 type ClientCloser interface {
 	Client
@@ -63,7 +74,7 @@ func (c clientConn) Call(ctx context.Context, method string, params any, result 
 	call := c.conn.Call(ctx, method, params)
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
-		detached := xcontext.Detach(ctx)
+		detached := detach(ctx)
 		c.conn.Notify(detached, "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
 	}
 	return err
@@ -101,7 +112,7 @@ func Call(ctx context.Context, conn *jsonrpc2.Connection, method string, params 
 	call := conn.Call(ctx, method, params)
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
-		conn.Notify(xcontext.Detach(ctx), "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
+		conn.Notify(detach(ctx), "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
 	}
 	return err
 }
@@ -110,17 +121,17 @@ func cancelCall(ctx context.Context, sender connSender, id any) {
 	if ctx.Err() == nil {
 		return
 	}
-	ctx = xcontext.Detach(ctx)
+	ctx = detach(ctx)
 	// Note that only *jsonrpc2.ID implements json.Marshaler.
 	sender.Notify(ctx, "$/cancelRequest", &CancelParams{ID: id})
 }
 
 func writeError(ctx context.Context, err error) error {
 	if err == nil {
-		event.Error(ctx, "jsonrpc2 internal error", fmt.Errorf("null error"))
+		log.Printf("jsonrpc2 internal error: null error")
 		err = jsonrpc2.ErrInternal
 	}
-	event.Error(ctx, "jsonrpc2 error", err)
+	log.Printf("jsonrpc2 error: %v", err)
 	return err
 }
 
