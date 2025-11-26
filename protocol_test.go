@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol_test
+package lsp_test
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
 
-	"github.com/TypeFox/go-lsp/protocol"
 	"github.com/google/go-cmp/cmp"
+	"typefox.dev/lsp"
 )
 
 // TestJSONMarshaling tests JSON marshaling/unmarshaling of basic LSP types
@@ -21,30 +21,30 @@ func TestJSONMarshaling(t *testing.T) {
 	}{
 		{
 			name: "Position",
-			obj: protocol.Position{
+			obj: lsp.Position{
 				Line:      10,
 				Character: 5,
 			},
 		},
 		{
 			name: "Range",
-			obj: protocol.Range{
-				Start: protocol.Position{Line: 1, Character: 0},
-				End:   protocol.Position{Line: 1, Character: 10},
+			obj: lsp.Range{
+				Start: lsp.Position{Line: 1, Character: 0},
+				End:   lsp.Position{Line: 1, Character: 10},
 			},
 		},
 		{
 			name: "TextDocumentIdentifier",
-			obj: protocol.TextDocumentIdentifier{
+			obj: lsp.TextDocumentIdentifier{
 				URI: "file:///path/to/file.go",
 			},
 		},
 		{
 			name: "TextEdit",
-			obj: protocol.TextEdit{
-				Range: protocol.Range{
-					Start: protocol.Position{Line: 0, Character: 0},
-					End:   protocol.Position{Line: 0, Character: 5},
+			obj: lsp.TextEdit{
+				Range: lsp.Range{
+					Start: lsp.Position{Line: 0, Character: 0},
+					End:   lsp.Position{Line: 0, Character: 5},
 				},
 				NewText: "hello",
 			},

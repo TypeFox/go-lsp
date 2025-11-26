@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol_test
+package lsp_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/TypeFox/go-lsp/protocol"
+	"typefox.dev/lsp"
 )
 
 // TestProtocolStructures tests protocol data structures and serialization
@@ -18,19 +18,19 @@ func TestProtocolStructures(t *testing.T) {
 
 	t.Run("InitializeSequence", func(t *testing.T) {
 		// Test initialize request structure
-		initParams := protocol.ParamInitialize{
-			XInitializeParams: protocol.XInitializeParams{
+		initParams := lsp.ParamInitialize{
+			XInitializeParams: lsp.XInitializeParams{
 				ProcessID: 12345,
-				ClientInfo: &protocol.ClientInfo{
+				ClientInfo: &lsp.ClientInfo{
 					Name:    "test-client",
 					Version: "1.0.0",
 				},
 				RootURI: "file:///workspace",
-				Capabilities: protocol.ClientCapabilities{
-					TextDocument: protocol.TextDocumentClientCapabilities{
-						Hover: &protocol.HoverClientCapabilities{
+				Capabilities: lsp.ClientCapabilities{
+					TextDocument: lsp.TextDocumentClientCapabilities{
+						Hover: &lsp.HoverClientCapabilities{
 							DynamicRegistration: true,
-							ContentFormat:       []protocol.MarkupKind{protocol.PlainText, protocol.Markdown},
+							ContentFormat:       []lsp.MarkupKind{lsp.PlainText, lsp.Markdown},
 						},
 					},
 				},
@@ -47,14 +47,14 @@ func TestProtocolStructures(t *testing.T) {
 		}
 
 		// Test initialize result structure
-		syncOptions := &protocol.TextDocumentSyncOptions{
+		syncOptions := &lsp.TextDocumentSyncOptions{
 			OpenClose: true,
-			Change:    protocol.Incremental,
+			Change:    lsp.Incremental,
 		}
-		initResult := protocol.InitializeResult{
-			Capabilities: protocol.ServerCapabilities{
+		initResult := lsp.InitializeResult{
+			Capabilities: lsp.ServerCapabilities{
 				TextDocumentSync:   syncOptions,
-				CompletionProvider: &protocol.CompletionOptions{},
+				CompletionProvider: &lsp.CompletionOptions{},
 			},
 		}
 
@@ -70,8 +70,8 @@ func TestProtocolStructures(t *testing.T) {
 
 	t.Run("TextDocumentLifecycle", func(t *testing.T) {
 		// Test text document lifecycle structures
-		didOpenParams := protocol.DidOpenTextDocumentParams{
-			TextDocument: protocol.TextDocumentItem{
+		didOpenParams := lsp.DidOpenTextDocumentParams{
+			TextDocument: lsp.TextDocumentItem{
 				URI:        "file:///test.go",
 				LanguageID: "go",
 				Version:    1,
@@ -84,14 +84,14 @@ func TestProtocolStructures(t *testing.T) {
 		}
 
 		// Test didChange notification
-		didChangeParams := protocol.DidChangeTextDocumentParams{
-			TextDocument: protocol.VersionedTextDocumentIdentifier{
-				TextDocumentIdentifier: protocol.TextDocumentIdentifier{
+		didChangeParams := lsp.DidChangeTextDocumentParams{
+			TextDocument: lsp.VersionedTextDocumentIdentifier{
+				TextDocumentIdentifier: lsp.TextDocumentIdentifier{
 					URI: "file:///test.go",
 				},
 				Version: 2,
 			},
-			ContentChanges: []protocol.TextDocumentContentChangeEvent{
+			ContentChanges: []lsp.TextDocumentContentChangeEvent{
 				{
 					Text: "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello, World!\")\n}\n",
 				},
@@ -103,8 +103,8 @@ func TestProtocolStructures(t *testing.T) {
 		}
 
 		// Test didSave notification
-		didSaveParams := protocol.DidSaveTextDocumentParams{
-			TextDocument: protocol.TextDocumentIdentifier{
+		didSaveParams := lsp.DidSaveTextDocumentParams{
+			TextDocument: lsp.TextDocumentIdentifier{
 				URI: "file:///test.go",
 			},
 		}
@@ -114,8 +114,8 @@ func TestProtocolStructures(t *testing.T) {
 		}
 
 		// Test didClose notification
-		didCloseParams := protocol.DidCloseTextDocumentParams{
-			TextDocument: protocol.TextDocumentIdentifier{
+		didCloseParams := lsp.DidCloseTextDocumentParams{
+			TextDocument: lsp.TextDocumentIdentifier{
 				URI: "file:///test.go",
 			},
 		}
@@ -127,12 +127,12 @@ func TestProtocolStructures(t *testing.T) {
 
 	t.Run("LSPRequests", func(t *testing.T) {
 		// Test hover request
-		hoverParams := protocol.HoverParams{
-			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-				TextDocument: protocol.TextDocumentIdentifier{
+		hoverParams := lsp.HoverParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				TextDocument: lsp.TextDocumentIdentifier{
 					URI: "file:///test.go",
 				},
-				Position: protocol.Position{
+				Position: lsp.Position{
 					Line:      5,
 					Character: 10,
 				},
@@ -144,12 +144,12 @@ func TestProtocolStructures(t *testing.T) {
 		}
 
 		// Test completion request
-		completionParams := protocol.CompletionParams{
-			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-				TextDocument: protocol.TextDocumentIdentifier{
+		completionParams := lsp.CompletionParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				TextDocument: lsp.TextDocumentIdentifier{
 					URI: "file:///test.go",
 				},
-				Position: protocol.Position{
+				Position: lsp.Position{
 					Line:      5,
 					Character: 10,
 				},
@@ -161,12 +161,12 @@ func TestProtocolStructures(t *testing.T) {
 		}
 
 		// Test completion response
-		completionList := protocol.CompletionList{
+		completionList := lsp.CompletionList{
 			IsIncomplete: false,
-			Items: []protocol.CompletionItem{
+			Items: []lsp.CompletionItem{
 				{
 					Label:  "println",
-					Kind:   protocol.FunctionCompletion,
+					Kind:   lsp.FunctionCompletion,
 					Detail: "func println(a ...interface{})",
 				},
 			},

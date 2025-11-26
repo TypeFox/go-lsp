@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol_test
+package lsp_test
 
 import (
 	"encoding/json"
@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TypeFox/go-lsp/protocol"
 	"github.com/google/go-cmp/cmp"
+	"typefox.dev/lsp"
 )
 
 // verify that type errors in Initialize lsp messages don't cause
@@ -100,7 +100,7 @@ func allDeltas(t *testing.T, v [][]int, repls ...string) {
 }
 
 func tryChange(start, end int, repl string) error {
-	var p, q protocol.ParamInitialize
+	var p, q lsp.ParamInitialize
 	mod := input[:start] + repl + input[end:]
 	excerpt := func() (string, string) {
 		a := max(start-5, 0)
@@ -118,7 +118,7 @@ func tryChange(start, end int, repl string) error {
 	case nil: //ok
 	case *json.UnmarshalTypeError:
 		break
-	case *protocol.UnmarshalError:
+	case *lsp.UnmarshalError:
 		return nil // cmp.Diff produces several diffs for custom unmrshalers
 	default:
 		return fmt.Errorf("%T unexpected unmarshal error", err)

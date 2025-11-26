@@ -183,8 +183,10 @@ func writeprotocol() {
 func writejsons() {
 	out := new(bytes.Buffer)
 	fmt.Fprintln(out, fileHdr)
-	out.WriteString("import \"encoding/json\"\n\n")
-	out.WriteString("import \"fmt\"\n")
+	out.WriteString("import (\n")
+	out.WriteString("    \"encoding/json\"\n")
+	out.WriteString("    \"fmt\"\n")
+	out.WriteString(")\n")
 
 	out.WriteString(`
 // UnmarshalError indicates that a JSON value did not conform to
@@ -247,7 +249,7 @@ func fileHeader(model *Model) string {
 
 // Code generated for LSP. DO NOT EDIT.
 
-package protocol
+package lsp
 
 // Code generated from %[1]s at ref %[2]s (hash %[3]s).
 // %[4]s/blob/%[2]s/%[1]s

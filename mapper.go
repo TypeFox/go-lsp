@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol
+package lsp
 
 // This file defines Mapper, which wraps a file content buffer
 // ([]byte) and provides efficient conversion between every kind of
@@ -65,8 +65,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/TypeFox/go-lsp/internal/util/bug"
-	"github.com/TypeFox/go-lsp/internal/util/safetoken"
+	"typefox.dev/lsp/internal/util/bug"
+	"typefox.dev/lsp/internal/util/safetoken"
 )
 
 // A Mapper wraps the content of a file and provides mapping

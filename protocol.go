@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol
+package lsp
 
 import (
 	"bytes"
@@ -116,8 +116,6 @@ func Call(ctx context.Context, conn *jsonrpc2.Connection, method string, params 
 	return err
 }
 
-
-
 // UnmarshalJSON unmarshals msg into the variable pointed to by
 // params. In JSONRPC, optional messages may be
 // "null", in which case it is a no-op.
@@ -145,7 +143,7 @@ func EncodeMessage(msg any) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal message: %w", err)
 	}
-	
+
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("Content-Length: %d\r\n\r\n", len(data)))
 	buf.Write(data)

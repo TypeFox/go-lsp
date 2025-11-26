@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol_test
+package lsp_test
 
 import (
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/TypeFox/go-lsp/protocol"
+	"typefox.dev/lsp"
 )
 
 // This file tests Mapper's logic for converting between offsets,
@@ -232,8 +232,8 @@ func TestToUTF16(t *testing.T) {
 			if e.issue != nil && !*e.issue {
 				t.Skip("expected to fail")
 			}
-			m := protocol.NewMapper("", e.input)
-			var pos protocol.Position
+			m := lsp.NewMapper("", e.input)
+			var pos lsp.Position
 			var err error
 			if e.line > 0 {
 				pos, err = m.LineCol8Position(e.line, e.col)
@@ -269,8 +269,8 @@ func TestToUTF16(t *testing.T) {
 func TestFromUTF16(t *testing.T) {
 	for _, e := range fromUTF16Tests {
 		t.Run(e.scenario, func(t *testing.T) {
-			m := protocol.NewMapper("", e.input)
-			offset, err := m.PositionOffset(protocol.Position{
+			m := lsp.NewMapper("", e.input)
+			offset, err := m.PositionOffset(lsp.Position{
 				Line:      uint32(e.line - 1),
 				Character: uint32(e.utf16col - 1),
 			})
@@ -357,7 +357,7 @@ var tests = []testCase{
 
 func TestLineChar(t *testing.T) {
 	for _, test := range tests {
-		m := protocol.NewMapper("", []byte(test.content))
+		m := lsp.NewMapper("", []byte(test.content))
 		offset := test.offset()
 		posn, _ := m.OffsetPosition(offset)
 		gotLine, gotChar := int(posn.Line), int(posn.Character)
@@ -369,7 +369,7 @@ func TestLineChar(t *testing.T) {
 
 func TestInvalidOffset(t *testing.T) {
 	content := []byte("a𐐀b\r\nx\ny")
-	m := protocol.NewMapper("", content)
+	m := lsp.NewMapper("", content)
 	for _, offset := range []int{-1, 100} {
 		posn, err := m.OffsetPosition(offset)
 		if err == nil {
@@ -380,14 +380,14 @@ func TestInvalidOffset(t *testing.T) {
 
 func TestPosition(t *testing.T) {
 	for _, test := range tests {
-		m := protocol.NewMapper("", []byte(test.content))
+		m := lsp.NewMapper("", []byte(test.content))
 		offset := test.offset()
 		got, err := m.OffsetPosition(offset)
 		if err != nil {
 			t.Errorf("OffsetPosition(%d) failed: %v", offset, err)
 			continue
 		}
-		want := protocol.Position{Line: uint32(test.wantLine), Character: uint32(test.wantChar)}
+		want := lsp.Position{Line: uint32(test.wantLine), Character: uint32(test.wantChar)}
 		if got != want {
 			t.Errorf("Position(%d) = %v, want %v", offset, got, want)
 		}
@@ -396,14 +396,14 @@ func TestPosition(t *testing.T) {
 
 func TestRange(t *testing.T) {
 	for _, test := range tests {
-		m := protocol.NewMapper("", []byte(test.content))
+		m := lsp.NewMapper("", []byte(test.content))
 		offset := test.offset()
 		got, err := m.OffsetRange(0, offset)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := protocol.Range{
-			End: protocol.Position{Line: uint32(test.wantLine), Character: uint32(test.wantChar)},
+		want := lsp.Range{
+			End: lsp.Position{Line: uint32(test.wantLine), Character: uint32(test.wantChar)},
 		}
 		if got != want {
 			t.Errorf("Range(%d) = %v, want %v", offset, got, want)
@@ -414,30 +414,30 @@ func TestRange(t *testing.T) {
 func TestBytesOffset(t *testing.T) {
 	tests := []struct {
 		text string
-		pos  protocol.Position
+		pos  lsp.Position
 		want int
 	}{
 		// U+10400 encodes as [F0 90 90 80] in UTF-8 and [D801 DC00] in UTF-16.
-		{text: `a𐐀b`, pos: protocol.Position{Line: 0, Character: 0}, want: 0},
-		{text: `a𐐀b`, pos: protocol.Position{Line: 0, Character: 1}, want: 1},
-		{text: `a𐐀b`, pos: protocol.Position{Line: 0, Character: 2}, want: 1},
-		{text: `a𐐀b`, pos: protocol.Position{Line: 0, Character: 3}, want: 5},
-		{text: `a𐐀b`, pos: protocol.Position{Line: 0, Character: 4}, want: 6},
-		{text: `a𐐀b`, pos: protocol.Position{Line: 0, Character: 5}, want: -1},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 0, Character: 3}, want: 3},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 0, Character: 4}, want: -1},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 1, Character: 0}, want: 4},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 1, Character: 3}, want: 7},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 1, Character: 4}, want: -1},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 2, Character: 0}, want: 8},
-		{text: "aaa\nbbb\n", pos: protocol.Position{Line: 2, Character: 1}, want: -1},
-		{text: "aaa\nbbb\n\n", pos: protocol.Position{Line: 2, Character: 0}, want: 8},
+		{text: `a𐐀b`, pos: lsp.Position{Line: 0, Character: 0}, want: 0},
+		{text: `a𐐀b`, pos: lsp.Position{Line: 0, Character: 1}, want: 1},
+		{text: `a𐐀b`, pos: lsp.Position{Line: 0, Character: 2}, want: 1},
+		{text: `a𐐀b`, pos: lsp.Position{Line: 0, Character: 3}, want: 5},
+		{text: `a𐐀b`, pos: lsp.Position{Line: 0, Character: 4}, want: 6},
+		{text: `a𐐀b`, pos: lsp.Position{Line: 0, Character: 5}, want: -1},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 0, Character: 3}, want: 3},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 0, Character: 4}, want: -1},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 1, Character: 0}, want: 4},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 1, Character: 3}, want: 7},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 1, Character: 4}, want: -1},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 2, Character: 0}, want: 8},
+		{text: "aaa\nbbb\n", pos: lsp.Position{Line: 2, Character: 1}, want: -1},
+		{text: "aaa\nbbb\n\n", pos: lsp.Position{Line: 2, Character: 0}, want: 8},
 	}
 
 	for i, test := range tests {
 		fname := fmt.Sprintf("test %d", i)
-		uri := protocol.URIFromPath(fname)
-		mapper := protocol.NewMapper(uri, []byte(test.text))
+		uri := lsp.URIFromPath(fname)
+		mapper := lsp.NewMapper(uri, []byte(test.text))
 		got, err := mapper.PositionOffset(test.pos)
 		if err != nil && test.want != -1 {
 			t.Errorf("%d: unexpected error: %v", i, err)

@@ -5,12 +5,12 @@
 //go:build !windows
 // +build !windows
 
-package protocol_test
+package lsp_test
 
 import (
 	"testing"
 
-	"github.com/TypeFox/go-lsp/protocol"
+	"typefox.dev/lsp"
 )
 
 // TestURIFromPath tests the conversion between URIs and filenames. The test cases
@@ -20,45 +20,45 @@ import (
 func TestURIFromPath(t *testing.T) {
 	for _, test := range []struct {
 		path, wantFile string
-		wantURI        protocol.DocumentURI
+		wantURI        lsp.DocumentURI
 	}{
 		{
 			path:     ``,
 			wantFile: ``,
-			wantURI:  protocol.DocumentURI(""),
+			wantURI:  lsp.DocumentURI(""),
 		},
 		{
 			path:     `C:/Windows/System32`,
 			wantFile: `C:/Windows/System32`,
-			wantURI:  protocol.DocumentURI("file:///C:/Windows/System32"),
+			wantURI:  lsp.DocumentURI("file:///C:/Windows/System32"),
 		},
 		{
 			path:     `C:/Go/src/bob.go`,
 			wantFile: `C:/Go/src/bob.go`,
-			wantURI:  protocol.DocumentURI("file:///C:/Go/src/bob.go"),
+			wantURI:  lsp.DocumentURI("file:///C:/Go/src/bob.go"),
 		},
 		{
 			path:     `c:/Go/src/bob.go`,
 			wantFile: `C:/Go/src/bob.go`,
-			wantURI:  protocol.DocumentURI("file:///C:/Go/src/bob.go"),
+			wantURI:  lsp.DocumentURI("file:///C:/Go/src/bob.go"),
 		},
 		{
 			path:     `/path/to/dir`,
 			wantFile: `/path/to/dir`,
-			wantURI:  protocol.DocumentURI("file:///path/to/dir"),
+			wantURI:  lsp.DocumentURI("file:///path/to/dir"),
 		},
 		{
 			path:     `/a/b/c/src/bob.go`,
 			wantFile: `/a/b/c/src/bob.go`,
-			wantURI:  protocol.DocumentURI("file:///a/b/c/src/bob.go"),
+			wantURI:  lsp.DocumentURI("file:///a/b/c/src/bob.go"),
 		},
 		{
 			path:     `c:/Go/src/bob george/george/george.go`,
 			wantFile: `C:/Go/src/bob george/george/george.go`,
-			wantURI:  protocol.DocumentURI("file:///C:/Go/src/bob%20george/george/george.go"),
+			wantURI:  lsp.DocumentURI("file:///C:/Go/src/bob%20george/george/george.go"),
 		},
 	} {
-		got := protocol.URIFromPath(test.path)
+		got := lsp.URIFromPath(test.path)
 		if got != test.wantURI {
 			t.Errorf("URIFromPath(%q): got %q, expected %q", test.path, got, test.wantURI)
 		}
@@ -116,7 +116,7 @@ func TestParseDocumentURI(t *testing.T) {
 			want:  "DocumentURI scheme is not 'file': https://go.dev/",
 		},
 	} {
-		uri, err := protocol.ParseDocumentURI(test.input)
+		uri, err := lsp.ParseDocumentURI(test.input)
 		var got string
 		if err != nil {
 			got = err.Error()

@@ -4,7 +4,7 @@
 
 //go:generate go run ./generate
 
-// Package protocol contains the structs that map directly to the
+// package lsp contains the structs that map directly to the
 // request and response messages of the Language Server Protocol.
 //
 // It is a literal transcription, with unmodified comments, and only the changes
@@ -15,4 +15,4 @@
 // Fields that are "|| null" are made pointers
 // Fields that are string or number are left as string
 // Fields that are type "number" are made float64
-package protocol
+package lsp

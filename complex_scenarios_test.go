@@ -2,26 +2,26 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package protocol_test
+package lsp_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/TypeFox/go-lsp/protocol"
 	"github.com/google/go-cmp/cmp"
+	"typefox.dev/lsp"
 )
 
 // TestWorkspaceEdit tests complex workspace edit scenarios
 func TestWorkspaceEdit(t *testing.T) {
 	t.Run("BasicWorkspaceEdit", func(t *testing.T) {
-		edit := protocol.WorkspaceEdit{
-			Changes: map[protocol.DocumentURI][]protocol.TextEdit{
+		edit := lsp.WorkspaceEdit{
+			Changes: map[lsp.DocumentURI][]lsp.TextEdit{
 				"file:///test.go": {
 					{
-						Range: protocol.Range{
-							Start: protocol.Position{Line: 0, Character: 0},
-							End:   protocol.Position{Line: 0, Character: 7},
+						Range: lsp.Range{
+							Start: lsp.Position{Line: 0, Character: 0},
+							End:   lsp.Position{Line: 0, Character: 7},
 						},
 						NewText: "package main",
 					},
@@ -34,7 +34,7 @@ func TestWorkspaceEdit(t *testing.T) {
 			t.Fatalf("Failed to marshal WorkspaceEdit: %v", err)
 		}
 
-		var unmarshaled protocol.WorkspaceEdit
+		var unmarshaled lsp.WorkspaceEdit
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal WorkspaceEdit: %v", err)
@@ -47,9 +47,9 @@ func TestWorkspaceEdit(t *testing.T) {
 
 	t.Run("TextDocumentEdit", func(t *testing.T) {
 		// Test TextDocumentEdit structure
-		edit := protocol.TextDocumentEdit{
-			TextDocument: protocol.OptionalVersionedTextDocumentIdentifier{
-				TextDocumentIdentifier: protocol.TextDocumentIdentifier{
+		edit := lsp.TextDocumentEdit{
+			TextDocument: lsp.OptionalVersionedTextDocumentIdentifier{
+				TextDocumentIdentifier: lsp.TextDocumentIdentifier{
 					URI: "file:///test.go",
 				},
 				Version: 1,
@@ -61,7 +61,7 @@ func TestWorkspaceEdit(t *testing.T) {
 			t.Fatalf("Failed to marshal TextDocumentEdit: %v", err)
 		}
 
-		var unmarshaled protocol.TextDocumentEdit
+		var unmarshaled lsp.TextDocumentEdit
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal TextDocumentEdit: %v", err)
@@ -76,25 +76,25 @@ func TestWorkspaceEdit(t *testing.T) {
 // TestDiagnostics tests diagnostic publishing scenarios
 func TestDiagnostics(t *testing.T) {
 	t.Run("PublishDiagnostics", func(t *testing.T) {
-		params := protocol.PublishDiagnosticsParams{
+		params := lsp.PublishDiagnosticsParams{
 			URI: "file:///test.go",
-			Diagnostics: []protocol.Diagnostic{
+			Diagnostics: []lsp.Diagnostic{
 				{
-					Range: protocol.Range{
-						Start: protocol.Position{Line: 5, Character: 10},
-						End:   protocol.Position{Line: 5, Character: 15},
+					Range: lsp.Range{
+						Start: lsp.Position{Line: 5, Character: 10},
+						End:   lsp.Position{Line: 5, Character: 15},
 					},
-					Severity: protocol.SeverityError,
+					Severity: lsp.SeverityError,
 					Code:     "unused",
 					Source:   "go",
 					Message:  "variable 'x' is unused",
-					RelatedInformation: []protocol.DiagnosticRelatedInformation{
+					RelatedInformation: []lsp.DiagnosticRelatedInformation{
 						{
-							Location: protocol.Location{
+							Location: lsp.Location{
 								URI: "file:///test.go",
-								Range: protocol.Range{
-									Start: protocol.Position{Line: 3, Character: 5},
-									End:   protocol.Position{Line: 3, Character: 6},
+								Range: lsp.Range{
+									Start: lsp.Position{Line: 3, Character: 5},
+									End:   lsp.Position{Line: 3, Character: 6},
 								},
 							},
 							Message: "variable 'x' declared here",
@@ -102,15 +102,15 @@ func TestDiagnostics(t *testing.T) {
 					},
 				},
 				{
-					Range: protocol.Range{
-						Start: protocol.Position{Line: 10, Character: 0},
-						End:   protocol.Position{Line: 10, Character: 20},
+					Range: lsp.Range{
+						Start: lsp.Position{Line: 10, Character: 0},
+						End:   lsp.Position{Line: 10, Character: 20},
 					},
-					Severity: protocol.SeverityWarning,
+					Severity: lsp.SeverityWarning,
 					Code:     "deprecated",
 					Source:   "go",
 					Message:  "function is deprecated",
-					Tags:     []protocol.DiagnosticTag{protocol.Deprecated},
+					Tags:     []lsp.DiagnosticTag{lsp.Deprecated},
 				},
 			},
 		}
@@ -120,7 +120,7 @@ func TestDiagnostics(t *testing.T) {
 			t.Fatalf("Failed to marshal PublishDiagnosticsParams: %v", err)
 		}
 
-		var unmarshaled protocol.PublishDiagnosticsParams
+		var unmarshaled lsp.PublishDiagnosticsParams
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal PublishDiagnosticsParams: %v", err)
@@ -135,8 +135,8 @@ func TestDiagnostics(t *testing.T) {
 // TestSemanticTokens tests semantic tokens scenarios
 func TestSemanticTokens(t *testing.T) {
 	t.Run("SemanticTokensParams", func(t *testing.T) {
-		params := protocol.SemanticTokensParams{
-			TextDocument: protocol.TextDocumentIdentifier{
+		params := lsp.SemanticTokensParams{
+			TextDocument: lsp.TextDocumentIdentifier{
 				URI: "file:///test.go",
 			},
 		}
@@ -146,7 +146,7 @@ func TestSemanticTokens(t *testing.T) {
 			t.Fatalf("Failed to marshal SemanticTokensParams: %v", err)
 		}
 
-		var unmarshaled protocol.SemanticTokensParams
+		var unmarshaled lsp.SemanticTokensParams
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal SemanticTokensParams: %v", err)
@@ -158,7 +158,7 @@ func TestSemanticTokens(t *testing.T) {
 	})
 
 	t.Run("SemanticTokens", func(t *testing.T) {
-		tokens := protocol.SemanticTokens{
+		tokens := lsp.SemanticTokens{
 			ResultID: "version-1",
 			Data:     []uint32{0, 0, 7, 0, 0, 1, 0, 6, 1, 0}, // Example token data
 		}
@@ -168,7 +168,7 @@ func TestSemanticTokens(t *testing.T) {
 			t.Fatalf("Failed to marshal SemanticTokens: %v", err)
 		}
 
-		var unmarshaled protocol.SemanticTokens
+		var unmarshaled lsp.SemanticTokens
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal SemanticTokens: %v", err)
@@ -183,27 +183,27 @@ func TestSemanticTokens(t *testing.T) {
 // TestCodeAction tests code action scenarios
 func TestCodeAction(t *testing.T) {
 	t.Run("CodeActionParams", func(t *testing.T) {
-		params := protocol.CodeActionParams{
-			TextDocument: protocol.TextDocumentIdentifier{
+		params := lsp.CodeActionParams{
+			TextDocument: lsp.TextDocumentIdentifier{
 				URI: "file:///test.go",
 			},
-			Range: protocol.Range{
-				Start: protocol.Position{Line: 5, Character: 0},
-				End:   protocol.Position{Line: 5, Character: 10},
+			Range: lsp.Range{
+				Start: lsp.Position{Line: 5, Character: 0},
+				End:   lsp.Position{Line: 5, Character: 10},
 			},
-			Context: protocol.CodeActionContext{
-				Diagnostics: []protocol.Diagnostic{
+			Context: lsp.CodeActionContext{
+				Diagnostics: []lsp.Diagnostic{
 					{
-						Range: protocol.Range{
-							Start: protocol.Position{Line: 5, Character: 5},
-							End:   protocol.Position{Line: 5, Character: 10},
+						Range: lsp.Range{
+							Start: lsp.Position{Line: 5, Character: 5},
+							End:   lsp.Position{Line: 5, Character: 10},
 						},
-						Severity: protocol.SeverityError,
+						Severity: lsp.SeverityError,
 						Code:     "unused",
 						Message:  "unused variable",
 					},
 				},
-				Only: []protocol.CodeActionKind{protocol.QuickFix},
+				Only: []lsp.CodeActionKind{lsp.QuickFix},
 			},
 		}
 
@@ -212,7 +212,7 @@ func TestCodeAction(t *testing.T) {
 			t.Fatalf("Failed to marshal CodeActionParams: %v", err)
 		}
 
-		var unmarshaled protocol.CodeActionParams
+		var unmarshaled lsp.CodeActionParams
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal CodeActionParams: %v", err)
@@ -224,16 +224,16 @@ func TestCodeAction(t *testing.T) {
 	})
 
 	t.Run("CodeAction", func(t *testing.T) {
-		action := protocol.CodeAction{
+		action := lsp.CodeAction{
 			Title: "Remove unused variable",
-			Kind:  protocol.QuickFix,
-			Edit: &protocol.WorkspaceEdit{
-				Changes: map[protocol.DocumentURI][]protocol.TextEdit{
+			Kind:  lsp.QuickFix,
+			Edit: &lsp.WorkspaceEdit{
+				Changes: map[lsp.DocumentURI][]lsp.TextEdit{
 					"file:///test.go": {
 						{
-							Range: protocol.Range{
-								Start: protocol.Position{Line: 5, Character: 0},
-								End:   protocol.Position{Line: 6, Character: 0},
+							Range: lsp.Range{
+								Start: lsp.Position{Line: 5, Character: 0},
+								End:   lsp.Position{Line: 6, Character: 0},
 							},
 							NewText: "",
 						},
@@ -248,7 +248,7 @@ func TestCodeAction(t *testing.T) {
 			t.Fatalf("Failed to marshal CodeAction: %v", err)
 		}
 
-		var unmarshaled protocol.CodeAction
+		var unmarshaled lsp.CodeAction
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal CodeAction: %v", err)
@@ -263,12 +263,12 @@ func TestCodeAction(t *testing.T) {
 // TestCallHierarchy tests call hierarchy scenarios
 func TestCallHierarchy(t *testing.T) {
 	t.Run("CallHierarchyPrepareParams", func(t *testing.T) {
-		params := protocol.CallHierarchyPrepareParams{
-			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-				TextDocument: protocol.TextDocumentIdentifier{
+		params := lsp.CallHierarchyPrepareParams{
+			TextDocumentPositionParams: lsp.TextDocumentPositionParams{
+				TextDocument: lsp.TextDocumentIdentifier{
 					URI: "file:///test.go",
 				},
-				Position: protocol.Position{
+				Position: lsp.Position{
 					Line:      10,
 					Character: 5,
 				},
@@ -280,7 +280,7 @@ func TestCallHierarchy(t *testing.T) {
 			t.Fatalf("Failed to marshal CallHierarchyPrepareParams: %v", err)
 		}
 
-		var unmarshaled protocol.CallHierarchyPrepareParams
+		var unmarshaled lsp.CallHierarchyPrepareParams
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal CallHierarchyPrepareParams: %v", err)
@@ -292,18 +292,18 @@ func TestCallHierarchy(t *testing.T) {
 	})
 
 	t.Run("CallHierarchyItem", func(t *testing.T) {
-		item := protocol.CallHierarchyItem{
+		item := lsp.CallHierarchyItem{
 			Name:   "main",
-			Kind:   protocol.Function,
+			Kind:   lsp.Function,
 			Detail: "func main()",
 			URI:    "file:///test.go",
-			Range: protocol.Range{
-				Start: protocol.Position{Line: 10, Character: 0},
-				End:   protocol.Position{Line: 15, Character: 1},
+			Range: lsp.Range{
+				Start: lsp.Position{Line: 10, Character: 0},
+				End:   lsp.Position{Line: 15, Character: 1},
 			},
-			SelectionRange: protocol.Range{
-				Start: protocol.Position{Line: 10, Character: 5},
-				End:   protocol.Position{Line: 10, Character: 9},
+			SelectionRange: lsp.Range{
+				Start: lsp.Position{Line: 10, Character: 5},
+				End:   lsp.Position{Line: 10, Character: 9},
 			},
 		}
 
@@ -312,7 +312,7 @@ func TestCallHierarchy(t *testing.T) {
 			t.Fatalf("Failed to marshal CallHierarchyItem: %v", err)
 		}
 
-		var unmarshaled protocol.CallHierarchyItem
+		var unmarshaled lsp.CallHierarchyItem
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal CallHierarchyItem: %v", err)
@@ -327,13 +327,13 @@ func TestCallHierarchy(t *testing.T) {
 // TestInlayHints tests inlay hints scenarios
 func TestInlayHints(t *testing.T) {
 	t.Run("InlayHintParams", func(t *testing.T) {
-		params := protocol.InlayHintParams{
-			TextDocument: protocol.TextDocumentIdentifier{
+		params := lsp.InlayHintParams{
+			TextDocument: lsp.TextDocumentIdentifier{
 				URI: "file:///test.go",
 			},
-			Range: protocol.Range{
-				Start: protocol.Position{Line: 0, Character: 0},
-				End:   protocol.Position{Line: 50, Character: 0},
+			Range: lsp.Range{
+				Start: lsp.Position{Line: 0, Character: 0},
+				End:   lsp.Position{Line: 50, Character: 0},
 			},
 		}
 
@@ -342,7 +342,7 @@ func TestInlayHints(t *testing.T) {
 			t.Fatalf("Failed to marshal InlayHintParams: %v", err)
 		}
 
-		var unmarshaled protocol.InlayHintParams
+		var unmarshaled lsp.InlayHintParams
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal InlayHintParams: %v", err)
@@ -354,17 +354,17 @@ func TestInlayHints(t *testing.T) {
 	})
 
 	t.Run("InlayHint", func(t *testing.T) {
-		hint := protocol.InlayHint{
-			Position: protocol.Position{
+		hint := lsp.InlayHint{
+			Position: lsp.Position{
 				Line:      5,
 				Character: 10,
 			},
-			Label: []protocol.InlayHintLabelPart{
+			Label: []lsp.InlayHintLabelPart{
 				{
 					Value: "string",
 				},
 			},
-			Kind: protocol.Type,
+			Kind: lsp.Type,
 		}
 
 		data, err := json.Marshal(hint)
@@ -372,7 +372,7 @@ func TestInlayHints(t *testing.T) {
 			t.Fatalf("Failed to marshal InlayHint: %v", err)
 		}
 
-		var unmarshaled protocol.InlayHint
+		var unmarshaled lsp.InlayHint
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal InlayHint: %v", err)
@@ -387,8 +387,8 @@ func TestInlayHints(t *testing.T) {
 // TestDocumentSymbol tests document symbol scenarios
 func TestDocumentSymbol(t *testing.T) {
 	t.Run("DocumentSymbolParams", func(t *testing.T) {
-		params := protocol.DocumentSymbolParams{
-			TextDocument: protocol.TextDocumentIdentifier{
+		params := lsp.DocumentSymbolParams{
+			TextDocument: lsp.TextDocumentIdentifier{
 				URI: "file:///test.go",
 			},
 		}
@@ -398,7 +398,7 @@ func TestDocumentSymbol(t *testing.T) {
 			t.Fatalf("Failed to marshal DocumentSymbolParams: %v", err)
 		}
 
-		var unmarshaled protocol.DocumentSymbolParams
+		var unmarshaled lsp.DocumentSymbolParams
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal DocumentSymbolParams: %v", err)
@@ -410,29 +410,29 @@ func TestDocumentSymbol(t *testing.T) {
 	})
 
 	t.Run("DocumentSymbol", func(t *testing.T) {
-		symbol := protocol.DocumentSymbol{
+		symbol := lsp.DocumentSymbol{
 			Name:   "TestFunction",
 			Detail: "func TestFunction()",
-			Kind:   protocol.Function,
-			Range: protocol.Range{
-				Start: protocol.Position{Line: 10, Character: 0},
-				End:   protocol.Position{Line: 20, Character: 1},
+			Kind:   lsp.Function,
+			Range: lsp.Range{
+				Start: lsp.Position{Line: 10, Character: 0},
+				End:   lsp.Position{Line: 20, Character: 1},
 			},
-			SelectionRange: protocol.Range{
-				Start: protocol.Position{Line: 10, Character: 5},
-				End:   protocol.Position{Line: 10, Character: 17},
+			SelectionRange: lsp.Range{
+				Start: lsp.Position{Line: 10, Character: 5},
+				End:   lsp.Position{Line: 10, Character: 17},
 			},
-			Children: []protocol.DocumentSymbol{
+			Children: []lsp.DocumentSymbol{
 				{
 					Name: "localVar",
-					Kind: protocol.Variable,
-					Range: protocol.Range{
-						Start: protocol.Position{Line: 11, Character: 1},
-						End:   protocol.Position{Line: 11, Character: 15},
+					Kind: lsp.Variable,
+					Range: lsp.Range{
+						Start: lsp.Position{Line: 11, Character: 1},
+						End:   lsp.Position{Line: 11, Character: 15},
 					},
-					SelectionRange: protocol.Range{
-						Start: protocol.Position{Line: 11, Character: 1},
-						End:   protocol.Position{Line: 11, Character: 9},
+					SelectionRange: lsp.Range{
+						Start: lsp.Position{Line: 11, Character: 1},
+						End:   lsp.Position{Line: 11, Character: 9},
 					},
 				},
 			},
@@ -443,7 +443,7 @@ func TestDocumentSymbol(t *testing.T) {
 			t.Fatalf("Failed to marshal DocumentSymbol: %v", err)
 		}
 
-		var unmarshaled protocol.DocumentSymbol
+		var unmarshaled lsp.DocumentSymbol
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal DocumentSymbol: %v", err)
