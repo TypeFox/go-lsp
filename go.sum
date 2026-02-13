@@ -1,8 +1,8 @@
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
-golang.org/x/exp/event v0.0.0-20250620022241-b7579e27df2b h1:FtazvyyEtVgN+BG5aSkkjNGUWZu9Q/zS/iAco5uAiLc=
-golang.org/x/exp/event v0.0.0-20250620022241-b7579e27df2b/go.mod h1:udw/aN1bTuThf1ISB3S96VHoY1PwY5hrk/e7w5O5DRs=
-golang.org/x/exp/jsonrpc2 v0.0.0-20250718183923-645b1fa84792 h1:RMCTa3JWNPyp5hSM8prMNG44vZKCFfck2jHa3+qQtV4=
-golang.org/x/exp/jsonrpc2 v0.0.0-20250718183923-645b1fa84792/go.mod h1:8vPx7pTiZoPAeFCkpxohawtNPPpl8NAO70z3MTVo4Ho=
+golang.org/x/exp/event v0.0.0-20260112195511-716be5621a96 h1:l+bY+u9cx/1NImWfu0OVcMmlK19fFvQEXUrm3c/qj/o=
+golang.org/x/exp/event v0.0.0-20260112195511-716be5621a96/go.mod h1:Mdr2zZUK+6kOEaz94oXdRj8dk4gD0X6uJ5tlEy7hG04=
+golang.org/x/exp/jsonrpc2 v0.0.0-20260212183809-81e46e3db34a h1:OilX50ahDAZPLQnimGv/Zc/nrvb5pCZn47MYWZBNptc=
+golang.org/x/exp/jsonrpc2 v0.0.0-20260212183809-81e46e3db34a/go.mod h1:uHn/jVtJipeQ3UbIAAAxOaYs79ThEUZ2O3ClemYhdn0=
 golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da h1:noIWHXmPHxILtqtCOPIhSt0ABwskkZKjD3bXGnZGpNY=
 golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da/go.mod h1:NDW/Ps6MPRej6fsCIbMTohpP40sJ/P/vI1MoTEGwX90=
