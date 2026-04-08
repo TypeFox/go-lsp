@@ -2136,33 +2136,3 @@ func (t *Or_WorkspaceOptions_textDocumentContent) UnmarshalJSON(x []byte) error 
 	}
 	return &UnmarshalError{"unmarshal failed to match one of [TextDocumentContentOptions TextDocumentContentRegistrationOptions]"}
 }
-
-func (t Or_textDocument_declaration) MarshalJSON() ([]byte, error) {
-	switch x := t.Value.(type) {
-	case Declaration:
-		return json.Marshal(x)
-	case []DeclarationLink:
-		return json.Marshal(x)
-	case nil:
-		return []byte("null"), nil
-	}
-	return nil, fmt.Errorf("type %T not one of [Declaration []DeclarationLink]", t)
-}
-
-func (t *Or_textDocument_declaration) UnmarshalJSON(x []byte) error {
-	if string(x) == "null" {
-		t.Value = nil
-		return nil
-	}
-	var h0 Declaration
-	if err := json.Unmarshal(x, &h0); err == nil {
-		t.Value = h0
-		return nil
-	}
-	var h1 []DeclarationLink
-	if err := json.Unmarshal(x, &h1); err == nil {
-		t.Value = h1
-		return nil
-	}
-	return &UnmarshalError{"unmarshal failed to match one of [Declaration []DeclarationLink]"}
-}

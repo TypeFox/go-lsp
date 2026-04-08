@@ -4074,11 +4074,6 @@ type Or_WorkspaceOptions_textDocumentContent struct {
 	Value any `json:"value"`
 }
 
-// created for Or [Declaration []DeclarationLink]
-type Or_textDocument_declaration struct {
-	Value any `json:"value"`
-}
-
 // created for Literal (Lit_SemanticTokensOptions_range_Item1)
 type PRangeESemanticTokensOptions struct {
 }

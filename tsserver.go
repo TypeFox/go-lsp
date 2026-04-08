@@ -60,9 +60,9 @@ type Server interface {
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_completion
 	Completion(context.Context, *CompletionParams) (*CompletionList, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_declaration
-	Declaration(context.Context, *DeclarationParams) (*Or_textDocument_declaration, error)
+	Declaration(context.Context, *DeclarationParams) ([]DefinitionLink, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_definition
-	Definition(context.Context, *DefinitionParams) ([]Location, error)
+	Definition(context.Context, *DefinitionParams) ([]DefinitionLink, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_diagnostic
 	Diagnostic(context.Context, *DocumentDiagnosticParams) (*DocumentDiagnosticReport, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_didChange
@@ -88,7 +88,7 @@ type Server interface {
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_hover
 	Hover(context.Context, *HoverParams) (*Hover, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_implementation
-	Implementation(context.Context, *ImplementationParams) ([]Location, error)
+	Implementation(context.Context, *ImplementationParams) ([]DefinitionLink, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_inlayHint
 	InlayHint(context.Context, *InlayHintParams) ([]InlayHint, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_inlineCompletion
@@ -126,7 +126,7 @@ type Server interface {
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_signatureHelp
 	SignatureHelp(context.Context, *SignatureHelpParams) (*SignatureHelp, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_typeDefinition
-	TypeDefinition(context.Context, *TypeDefinitionParams) ([]Location, error)
+	TypeDefinition(context.Context, *TypeDefinitionParams) ([]DefinitionLink, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_willSave
 	WillSave(context.Context, *WillSaveTextDocumentParams) error
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification#textDocument_willSaveWaitUntil
@@ -1028,15 +1028,15 @@ func (s *serverDispatcher) Completion(ctx context.Context, params *CompletionPar
 	}
 	return result, nil
 }
-func (s *serverDispatcher) Declaration(ctx context.Context, params *DeclarationParams) (*Or_textDocument_declaration, error) {
-	var result *Or_textDocument_declaration
+func (s *serverDispatcher) Declaration(ctx context.Context, params *DeclarationParams) ([]DefinitionLink, error) {
+	var result []DefinitionLink
 	if err := s.sender.Call(ctx, "textDocument/declaration", params, &result); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
-func (s *serverDispatcher) Definition(ctx context.Context, params *DefinitionParams) ([]Location, error) {
-	var result []Location
+func (s *serverDispatcher) Definition(ctx context.Context, params *DefinitionParams) ([]DefinitionLink, error) {
+	var result []DefinitionLink
 	if err := s.sender.Call(ctx, "textDocument/definition", params, &result); err != nil {
 		return nil, err
 	}
@@ -1110,8 +1110,8 @@ func (s *serverDispatcher) Hover(ctx context.Context, params *HoverParams) (*Hov
 	}
 	return result, nil
 }
-func (s *serverDispatcher) Implementation(ctx context.Context, params *ImplementationParams) ([]Location, error) {
-	var result []Location
+func (s *serverDispatcher) Implementation(ctx context.Context, params *ImplementationParams) ([]DefinitionLink, error) {
+	var result []DefinitionLink
 	if err := s.sender.Call(ctx, "textDocument/implementation", params, &result); err != nil {
 		return nil, err
 	}
@@ -1243,8 +1243,8 @@ func (s *serverDispatcher) SignatureHelp(ctx context.Context, params *SignatureH
 	}
 	return result, nil
 }
-func (s *serverDispatcher) TypeDefinition(ctx context.Context, params *TypeDefinitionParams) ([]Location, error) {
-	var result []Location
+func (s *serverDispatcher) TypeDefinition(ctx context.Context, params *TypeDefinitionParams) ([]DefinitionLink, error) {
+	var result []DefinitionLink
 	if err := s.sender.Call(ctx, "textDocument/typeDefinition", params, &result); err != nil {
 		return nil, err
 	}
