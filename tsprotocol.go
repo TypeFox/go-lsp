@@ -201,7 +201,13 @@ type CallHierarchyRegistrationOptions struct {
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#cancelParams
 type CancelParams struct {
 	// The request id to cancel.
-	ID any `json:"id"`
+	ID CancelParamsId `json:"id"`
+}
+
+// created for Or [int32 string]
+type CancelParamsId struct {
+	Int32  *int32
+	String *string
 }
 
 // Additional information that describes document changes.
@@ -440,10 +446,22 @@ type ClientSemanticTokensRequestFullDelta struct {
 type ClientSemanticTokensRequestOptions struct {
 	// The client will send the `textDocument/semanticTokens/range` request if
 	// the server provides a corresponding handler.
-	Range *Or_ClientSemanticTokensRequestOptions_range `json:"range,omitempty"`
+	Range *ClientSemanticTokensRequestOptionsRange `json:"range,omitempty"`
 	// The client will send the `textDocument/semanticTokens/full` request if
 	// the server provides a corresponding handler.
-	Full *Or_ClientSemanticTokensRequestOptions_full `json:"full,omitempty"`
+	Full *ClientSemanticTokensRequestOptionsFull `json:"full,omitempty"`
+}
+
+// created for Or [ClientSemanticTokensRequestFullDelta bool]
+type ClientSemanticTokensRequestOptionsFull struct {
+	ClientSemanticTokensRequestFullDelta *ClientSemanticTokensRequestFullDelta
+	Bool                                 *bool
+}
+
+// created for Or [Lit_ClientSemanticTokensRequestOptions_range_Item1 bool]
+type ClientSemanticTokensRequestOptionsRange struct {
+	Lit_ClientSemanticTokensRequestOptions_range_Item1 *Lit_ClientSemanticTokensRequestOptions_range_Item1
+	Bool                                               *bool
 }
 
 // @since 3.18.0
@@ -977,7 +995,7 @@ type CompletionItem struct {
 	// about this item, like type or symbol information.
 	Detail string `json:"detail,omitempty"`
 	// A human-readable string that represents a doc-comment.
-	Documentation *Or_CompletionItem_documentation `json:"documentation,omitempty"`
+	Documentation *CompletionItemDocumentation `json:"documentation,omitempty"`
 	// Indicates if this item is deprecated.
 	// @deprecated Use `tags` instead.
 	Deprecated bool `json:"deprecated,omitempty"`
@@ -1040,7 +1058,7 @@ type CompletionItem struct {
 	// contained and starting at the same position.
 	//
 	// @since 3.16.0 additional type `InsertReplaceEdit`
-	TextEdit *Or_CompletionItem_textEdit `json:"textEdit,omitempty"`
+	TextEdit *CompletionItemTextEdit `json:"textEdit,omitempty"`
 	// The edit text used if the completion item is part of a CompletionList and
 	// CompletionList defines an item default for the text edit range.
 	//
@@ -1160,7 +1178,7 @@ type CompletionItemDefaults struct {
 	// A default edit range.
 	//
 	// @since 3.17.0
-	EditRange *Or_CompletionItemDefaults_editRange `json:"editRange,omitempty"`
+	EditRange *CompletionItemDefaultsEditRange `json:"editRange,omitempty"`
 	// A default insert text format.
 	//
 	// @since 3.17.0
@@ -1173,6 +1191,18 @@ type CompletionItemDefaults struct {
 	//
 	// @since 3.17.0
 	Data any `json:"data,omitempty"`
+}
+
+// created for Or [EditRangeWithInsertReplace Range]
+type CompletionItemDefaultsEditRange struct {
+	EditRangeWithInsertReplace *EditRangeWithInsertReplace
+	Range                      *Range
+}
+
+// created for Or [MarkupContent string]
+type CompletionItemDocumentation struct {
+	MarkupContent *MarkupContent
+	String        *string
 }
 
 // The kind of a completion entry.
@@ -1204,6 +1234,12 @@ type CompletionItemTag uint32
 type CompletionItemTagOptions struct {
 	// The tags supported by the client.
 	ValueSet []CompletionItemTag `json:"valueSet"`
+}
+
+// created for Or [InsertReplaceEdit TextEdit]
+type CompletionItemTextEdit struct {
+	InsertReplaceEdit *InsertReplaceEdit
+	TextEdit          *TextEdit
 }
 
 // Represents a collection of {@link CompletionItem completion items} to be presented
@@ -1434,15 +1470,12 @@ type DeclarationRegistrationOptions struct {
 	StaticRegistrationOptions
 }
 
-// The definition of a symbol represented as one or many {@link Location locations}.
-// For most programming languages there is only one location at which a symbol is
-// defined.
-//
-// Servers should prefer returning `DefinitionLink` over `Definition` if supported
-// by the client.
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#definition
-type Definition = Or_Definition // (alias)
+// created for Or [Location []Location]
+type Definition struct {
+	Location  *Location
+	Locations *[]Location
+}
+
 // Client Capabilities for a {@link DefinitionRequest}.
 //
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#definitionClientCapabilities
@@ -1532,7 +1565,7 @@ type Diagnostic struct {
 	// always provide a severity value.
 	Severity DiagnosticSeverity `json:"severity,omitempty"`
 	// The diagnostic's code, which usually appear in the user interface.
-	Code any `json:"code,omitempty"`
+	Code DiagnosticCode `json:"code,omitempty"`
 	// An optional property to describe the error code.
 	// Requires the code field (above) to be present/not null.
 	//
@@ -1546,7 +1579,7 @@ type Diagnostic struct {
 	//
 	// @since 3.18.0 - support for MarkupContent. This is guarded by the client
 	// capability `textDocument.diagnostic.markupMessageSupport`.
-	Message Or_Diagnostic_message `json:"message"`
+	Message DiagnosticMessage `json:"message"`
 	// Additional metadata about the diagnostic.
 	//
 	// @since 3.15.0
@@ -1578,6 +1611,18 @@ type DiagnosticClientCapabilities struct {
 	// @since 3.18.0
 	MarkupMessageSupport bool `json:"markupMessageSupport,omitempty"`
 	DiagnosticsCapabilities
+}
+
+// created for Or [int32 string]
+type DiagnosticCode struct {
+	Int32  *int32
+	String *string
+}
+
+// created for Or [MarkupContent string]
+type DiagnosticMessage struct {
+	MarkupContent *MarkupContent
+	String        *string
 }
 
 // Diagnostic options.
@@ -1694,7 +1739,13 @@ type DidChangeConfigurationParams struct {
 
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#didChangeConfigurationRegistrationOptions
 type DidChangeConfigurationRegistrationOptions struct {
-	Section *OrPSection_workspace_didChangeConfiguration `json:"section,omitempty"`
+	Section *DidChangeConfigurationRegistrationOptionsSection `json:"section,omitempty"`
+}
+
+// created for Or [[]string string]
+type DidChangeConfigurationRegistrationOptionsSection struct {
+	Strings *[]string
+	String  *string
 }
 
 // The params sent in a change notebook document notification.
@@ -1894,16 +1945,12 @@ type DocumentDiagnosticParams struct {
 	PartialResultParams
 }
 
-// The result of a document diagnostic pull request. A report can
-// either be a full report containing all diagnostics for the
-// requested document or an unchanged report indicating that nothing
-// has changed in terms of diagnostics in comparison to the last
-// pull request.
-//
-// @since 3.17.0
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#documentDiagnosticReport
-type DocumentDiagnosticReport = Or_DocumentDiagnosticReport // (alias)
+// created for Or [RelatedFullDocumentDiagnosticReport RelatedUnchangedDocumentDiagnosticReport]
+type DocumentDiagnosticReport struct {
+	RelatedFullDocumentDiagnosticReport      *RelatedFullDocumentDiagnosticReport
+	RelatedUnchangedDocumentDiagnosticReport *RelatedUnchangedDocumentDiagnosticReport
+}
+
 // The document diagnostic report kinds.
 //
 // @since 3.17.0
@@ -1918,31 +1965,12 @@ type DocumentDiagnosticReportPartialResult struct {
 	RelatedDocuments map[DocumentURI]any `json:"relatedDocuments"`
 }
 
-// The document diagnostic report used when reporting partial result.
-//
-// When using partial results, the first literal sent needs to be a
-// DocumentDiagnosticReport providing the diagnostics on the document
-// followed by n DocumentDiagnosticReportPartialResult literals providing
-// the diagnostics for related documents.
-//
-// ```
-// DocumentDiagnosticReport
-// DocumentDiagnosticReportPartialResult
-// DocumentDiagnosticReportPartialResult
-// ...
-// ```
-//
-// @since 3.18.1
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#documentDiagnosticReportProgress
-type DocumentDiagnosticReportProgress = Or_DocumentDiagnosticReportProgress // (alias)
-// A document filter describes a top level text document or
-// a notebook cell document.
-//
-// @since 3.17.0 - support for NotebookCellTextDocumentFilter.
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#documentFilter
-type DocumentFilter = Or_DocumentFilter // (alias)
+// created for Or [NotebookCellTextDocumentFilter TextDocumentFilter]
+type DocumentFilter struct {
+	NotebookCellTextDocumentFilter *NotebookCellTextDocumentFilter
+	TextDocumentFilter             *TextDocumentFilter
+}
+
 // Client capabilities of a {@link DocumentFormattingRequest}.
 //
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#documentFormattingClientCapabilities
@@ -2684,12 +2712,12 @@ type GeneralClientCapabilities struct {
 	PositionEncodings []PositionEncodingKind `json:"positionEncodings,omitempty"`
 }
 
-// The glob pattern. Either a string pattern or a relative pattern.
-//
-// @since 3.17.0
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#globPattern
-type GlobPattern = Or_GlobPattern // (alias)
+// created for Or [Pattern RelativePattern]
+type GlobPattern struct {
+	Pattern         *Pattern
+	RelativePattern *RelativePattern
+}
+
 // The result of a hover request.
 //
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#hover
@@ -2826,7 +2854,7 @@ type InlayHint struct {
 	// hint itself is now obsolete.
 	TextEdits []TextEdit `json:"textEdits,omitempty"`
 	// The tooltip text when you hover over this item.
-	Tooltip *OrPTooltip_textDocument_inlayHint `json:"tooltip,omitempty"`
+	Tooltip *InlayHintTooltip `json:"tooltip,omitempty"`
 	// Render padding before the hint.
 	//
 	// Note: Padding should use the editor's background color, not the
@@ -2874,7 +2902,7 @@ type InlayHintLabelPart struct {
 	// The tooltip text when you hover over this label part. Depending on
 	// the client capability `inlayHint.resolveSupport` clients might resolve
 	// this property late using the resolve request.
-	Tooltip *OrPTooltipPLabel `json:"tooltip,omitempty"`
+	Tooltip *InlayHintLabelPartTooltip `json:"tooltip,omitempty"`
 	// An optional source code location that represents this
 	// label part.
 	//
@@ -2892,6 +2920,12 @@ type InlayHintLabelPart struct {
 	// Depending on the client capability `inlayHint.resolveSupport` clients
 	// might resolve this property late using the resolve request.
 	Command *Command `json:"command,omitempty"`
+}
+
+// created for Or [MarkupContent string]
+type InlayHintLabelPartTooltip struct {
+	MarkupContent *MarkupContent
+	String        *string
 }
 
 // Inlay hint options used during static registration.
@@ -2928,6 +2962,12 @@ type InlayHintRegistrationOptions struct {
 	InlayHintOptions
 	TextDocumentRegistrationOptions
 	StaticRegistrationOptions
+}
+
+// created for Or [MarkupContent string]
+type InlayHintTooltip struct {
+	MarkupContent *MarkupContent
+	String        *string
 }
 
 // Client workspace capabilities specific to inlay hints.
@@ -2975,13 +3015,19 @@ type InlineCompletionContext struct {
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#inlineCompletionItem
 type InlineCompletionItem struct {
 	// The text to replace the range with. Must be set.
-	InsertText Or_InlineCompletionItem_insertText `json:"insertText"`
+	InsertText InlineCompletionItemInsertText `json:"insertText"`
 	// A text that is used to decide if this inline completion should be shown. When `falsy` the {@link InlineCompletionItem.insertText} is used.
 	FilterText string `json:"filterText,omitempty"`
 	// The range to replace. Must begin and end on the same line.
 	Range *Range `json:"range,omitempty"`
 	// An optional {@link Command} that is executed *after* inserting this completion.
 	Command *Command `json:"command,omitempty"`
+}
+
+// created for Or [StringValue string]
+type InlineCompletionItemInsertText struct {
+	StringValue *StringValue
+	String      *string
 }
 
 // Represents a collection of {@link InlineCompletionItem inline completion items} to be presented in the editor.
@@ -3032,18 +3078,13 @@ type InlineCompletionRegistrationOptions struct {
 // @since 3.18.0
 type InlineCompletionTriggerKind uint32
 
-// Inline value information can be provided by different means:
-//
-//   - directly as a text value (class InlineValueText).
-//   - as a name to use for a variable lookup (class InlineValueVariableLookup)
-//   - as an evaluatable expression (class InlineValueEvaluatableExpression)
-//
-// The InlineValue types combines all inline value types into one type.
-//
-// @since 3.17.0
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#inlineValue
-type InlineValue = Or_InlineValue // (alias)
+// created for Or [InlineValueEvaluatableExpression InlineValueText InlineValueVariableLookup]
+type InlineValue struct {
+	InlineValueEvaluatableExpression *InlineValueEvaluatableExpression
+	InlineValueText                  *InlineValueText
+	InlineValueVariableLookup        *InlineValueVariableLookup
+}
+
 // Client capabilities specific to inline values.
 //
 // @since 3.17.0
@@ -3335,21 +3376,6 @@ type MarkdownClientCapabilities struct {
 	AllowedTags []string `json:"allowedTags,omitempty"`
 }
 
-// MarkedString can be used to render human readable text. It is either a markdown string
-// or a code-block that provides a language and a code snippet. The language identifier
-// is semantically equal to the optional language identifier in fenced code blocks in GitHub
-// issues. See https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting
-//
-// The pair of a language and a value is an equivalent to markdown:
-// ```${language}
-// ${value}
-// ```
-//
-// Note that markdown strings will be sanitized - that means html will be escaped.
-// @deprecated use MarkupContent instead.
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#markedString
-type MarkedString = Or_MarkedString // (alias)
 // @since 3.18.0
 // @deprecated use MarkupContent instead.
 //
@@ -3522,12 +3548,18 @@ type NotebookCellTextDocumentFilter struct {
 	// containing the notebook cell. If a string
 	// value is provided it matches against the
 	// notebook type. '*' matches every notebook.
-	Notebook Or_NotebookCellTextDocumentFilter_notebook `json:"notebook"`
+	Notebook NotebookCellTextDocumentFilterNotebook `json:"notebook"`
 	// A language id like `python`.
 	//
 	// Will be matched against the language id of the
 	// notebook cell document. '*' matches every language.
 	Language string `json:"language,omitempty"`
+}
+
+// created for Or [NotebookDocumentFilter string]
+type NotebookCellTextDocumentFilterNotebook struct {
+	NotebookDocumentFilter *NotebookDocumentFilter
+	String                 *string
 }
 
 // A notebook document.
@@ -3618,14 +3650,13 @@ type NotebookDocumentClientCapabilities struct {
 	Synchronization NotebookDocumentSyncClientCapabilities `json:"synchronization"`
 }
 
-// A notebook document filter denotes a notebook document by
-// different properties. The properties will be match
-// against the notebook's URI (same as with documents)
-//
-// @since 3.17.0
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#notebookDocumentFilter
-type NotebookDocumentFilter = Or_NotebookDocumentFilter // (alias)
+// created for Or [NotebookDocumentFilterNotebookType NotebookDocumentFilterPattern NotebookDocumentFilterScheme]
+type NotebookDocumentFilter struct {
+	NotebookDocumentFilterNotebookType *NotebookDocumentFilterNotebookType
+	NotebookDocumentFilterPattern      *NotebookDocumentFilterPattern
+	NotebookDocumentFilterScheme       *NotebookDocumentFilterScheme
+}
+
 // A notebook document filter where `notebookType` is required field.
 //
 // @since 3.18.0
@@ -3675,9 +3706,15 @@ type NotebookDocumentFilterWithCells struct {
 	// The notebook to be synced If a string
 	// value is provided it matches against the
 	// notebook type. '*' matches every notebook.
-	Notebook *Or_NotebookDocumentFilterWithCells_notebook `json:"notebook,omitempty"`
+	Notebook *NotebookDocumentFilterWithCellsNotebook `json:"notebook,omitempty"`
 	// The cells of the matching notebook to be synced.
 	Cells []NotebookCellLanguage `json:"cells"`
+}
+
+// created for Or [NotebookDocumentFilter string]
+type NotebookDocumentFilterWithCellsNotebook struct {
+	NotebookDocumentFilter *NotebookDocumentFilter
+	String                 *string
 }
 
 // @since 3.18.0
@@ -3687,9 +3724,15 @@ type NotebookDocumentFilterWithNotebook struct {
 	// The notebook to be synced If a string
 	// value is provided it matches against the
 	// notebook type. '*' matches every notebook.
-	Notebook Or_NotebookDocumentFilterWithNotebook_notebook `json:"notebook"`
+	Notebook NotebookDocumentFilterWithNotebookNotebook `json:"notebook"`
 	// The cells of the matching notebook to be synced.
 	Cells []NotebookCellLanguage `json:"cells,omitempty"`
+}
+
+// created for Or [NotebookDocumentFilter string]
+type NotebookDocumentFilterWithNotebookNotebook struct {
+	NotebookDocumentFilter *NotebookDocumentFilter
+	String                 *string
 }
 
 // A literal to identify a notebook document in the client.
@@ -3734,10 +3777,16 @@ type NotebookDocumentSyncClientCapabilities struct {
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#notebookDocumentSyncOptions
 type NotebookDocumentSyncOptions struct {
 	// The notebooks to be synced
-	NotebookSelector []Or_NotebookDocumentSyncOptions_notebookSelector_Elem `json:"notebookSelector"`
+	NotebookSelector []NotebookDocumentSyncOptionsNotebookSelectorElem `json:"notebookSelector"`
 	// Whether save notification should be forwarded to
 	// the server. Will only be honored if mode === `notebook`.
 	Save bool `json:"save,omitempty"`
+}
+
+// created for Or [NotebookDocumentFilterWithCells NotebookDocumentFilterWithNotebook]
+type NotebookDocumentSyncOptionsNotebookSelectorElem struct {
+	NotebookDocumentFilterWithCells    *NotebookDocumentFilterWithCells
+	NotebookDocumentFilterWithNotebook *NotebookDocumentFilterWithNotebook
 }
 
 // Registration options specific to a notebook.
@@ -3761,346 +3810,6 @@ type OptionalVersionedTextDocumentIdentifier struct {
 	// truth (as specified with document content ownership).
 	Version int32 `json:"version"`
 	TextDocumentIdentifier
-}
-
-// created for Or [Location LocationUriOnly]
-type OrPLocation_workspace_symbol struct {
-	Value any `json:"value"`
-}
-
-// created for Or [[]string string]
-type OrPSection_workspace_didChangeConfiguration struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkupContent string]
-type OrPTooltipPLabel struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkupContent string]
-type OrPTooltip_textDocument_inlayHint struct {
-	Value any `json:"value"`
-}
-
-// created for Or [int32 string]
-type Or_CancelParams_id struct {
-	Value any `json:"value"`
-}
-
-// created for Or [ClientSemanticTokensRequestFullDelta bool]
-type Or_ClientSemanticTokensRequestOptions_full struct {
-	Value any `json:"value"`
-}
-
-// created for Or [Lit_ClientSemanticTokensRequestOptions_range_Item1 bool]
-type Or_ClientSemanticTokensRequestOptions_range struct {
-	Value any `json:"value"`
-}
-
-// created for Or [EditRangeWithInsertReplace Range]
-type Or_CompletionItemDefaults_editRange struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkupContent string]
-type Or_CompletionItem_documentation struct {
-	Value any `json:"value"`
-}
-
-// created for Or [InsertReplaceEdit TextEdit]
-type Or_CompletionItem_textEdit struct {
-	Value any `json:"value"`
-}
-
-// created for Or [Location []Location]
-type Or_Definition struct {
-	Value any `json:"value"`
-}
-
-// created for Or [int32 string]
-type Or_Diagnostic_code struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkupContent string]
-type Or_Diagnostic_message struct {
-	Value any `json:"value"`
-}
-
-// created for Or [RelatedFullDocumentDiagnosticReport RelatedUnchangedDocumentDiagnosticReport]
-type Or_DocumentDiagnosticReport struct {
-	Value any `json:"value"`
-}
-
-// created for Or [FullDocumentDiagnosticReport UnchangedDocumentDiagnosticReport]
-type Or_DocumentDiagnosticReportPartialResult_relatedDocuments_Value struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DocumentDiagnosticReport DocumentDiagnosticReportPartialResult]
-type Or_DocumentDiagnosticReportProgress struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookCellTextDocumentFilter TextDocumentFilter]
-type Or_DocumentFilter struct {
-	Value any `json:"value"`
-}
-
-// created for Or [Pattern RelativePattern]
-type Or_GlobPattern struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkedString MarkupContent []MarkedString]
-type Or_Hover_contents struct {
-	Value any `json:"value"`
-}
-
-// created for Or [[]InlayHintLabelPart string]
-type Or_InlayHint_label struct {
-	Value any `json:"value"`
-}
-
-// created for Or [StringValue string]
-type Or_InlineCompletionItem_insertText struct {
-	Value any `json:"value"`
-}
-
-// created for Or [InlineValueEvaluatableExpression InlineValueText InlineValueVariableLookup]
-type Or_InlineValue struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkedStringWithLanguage string]
-type Or_MarkedString struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookDocumentFilter string]
-type Or_NotebookCellTextDocumentFilter_notebook struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookDocumentFilterNotebookType NotebookDocumentFilterPattern NotebookDocumentFilterScheme]
-type Or_NotebookDocumentFilter struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookDocumentFilter string]
-type Or_NotebookDocumentFilterWithCells_notebook struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookDocumentFilter string]
-type Or_NotebookDocumentFilterWithNotebook_notebook struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookDocumentFilterWithCells NotebookDocumentFilterWithNotebook]
-type Or_NotebookDocumentSyncOptions_notebookSelector_Elem struct {
-	Value any `json:"value"`
-}
-
-// created for Or [FullDocumentDiagnosticReport UnchangedDocumentDiagnosticReport]
-type Or_RelatedFullDocumentDiagnosticReport_relatedDocuments_Value struct {
-	Value any `json:"value"`
-}
-
-// created for Or [FullDocumentDiagnosticReport UnchangedDocumentDiagnosticReport]
-type Or_RelatedUnchangedDocumentDiagnosticReport_relatedDocuments_Value struct {
-	Value any `json:"value"`
-}
-
-// created for Or [CodeAction Command]
-type Or_Result_textDocument_codeAction_Item0_Elem struct {
-	Value any `json:"value"`
-}
-
-// created for Or [InlineCompletionList []InlineCompletionItem]
-type Or_Result_textDocument_inlineCompletion struct {
-	Value any `json:"value"`
-}
-
-// created for Or [SemanticTokensFullDelta bool]
-type Or_SemanticTokensOptions_full struct {
-	Value any `json:"value"`
-}
-
-// created for Or [PRangeESemanticTokensOptions bool]
-type Or_SemanticTokensOptions_range struct {
-	Value any `json:"value"`
-}
-
-// created for Or [CallHierarchyOptions CallHierarchyRegistrationOptions bool]
-type Or_ServerCapabilities_callHierarchyProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [CodeActionOptions bool]
-type Or_ServerCapabilities_codeActionProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DocumentColorOptions DocumentColorRegistrationOptions bool]
-type Or_ServerCapabilities_colorProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DeclarationOptions DeclarationRegistrationOptions bool]
-type Or_ServerCapabilities_declarationProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DefinitionOptions bool]
-type Or_ServerCapabilities_definitionProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DiagnosticOptions DiagnosticRegistrationOptions]
-type Or_ServerCapabilities_diagnosticProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DocumentFormattingOptions bool]
-type Or_ServerCapabilities_documentFormattingProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DocumentHighlightOptions bool]
-type Or_ServerCapabilities_documentHighlightProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DocumentRangeFormattingOptions bool]
-type Or_ServerCapabilities_documentRangeFormattingProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [DocumentSymbolOptions bool]
-type Or_ServerCapabilities_documentSymbolProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [FoldingRangeOptions FoldingRangeRegistrationOptions bool]
-type Or_ServerCapabilities_foldingRangeProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [HoverOptions bool]
-type Or_ServerCapabilities_hoverProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [ImplementationOptions ImplementationRegistrationOptions bool]
-type Or_ServerCapabilities_implementationProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [InlayHintOptions InlayHintRegistrationOptions bool]
-type Or_ServerCapabilities_inlayHintProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [InlineCompletionOptions bool]
-type Or_ServerCapabilities_inlineCompletionProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [InlineValueOptions InlineValueRegistrationOptions bool]
-type Or_ServerCapabilities_inlineValueProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [LinkedEditingRangeOptions LinkedEditingRangeRegistrationOptions bool]
-type Or_ServerCapabilities_linkedEditingRangeProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MonikerOptions MonikerRegistrationOptions bool]
-type Or_ServerCapabilities_monikerProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [NotebookDocumentSyncOptions NotebookDocumentSyncRegistrationOptions]
-type Or_ServerCapabilities_notebookDocumentSync struct {
-	Value any `json:"value"`
-}
-
-// created for Or [ReferenceOptions bool]
-type Or_ServerCapabilities_referencesProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [RenameOptions bool]
-type Or_ServerCapabilities_renameProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [SelectionRangeOptions SelectionRangeRegistrationOptions bool]
-type Or_ServerCapabilities_selectionRangeProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [SemanticTokensOptions SemanticTokensRegistrationOptions]
-type Or_ServerCapabilities_semanticTokensProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [TextDocumentSyncKind TextDocumentSyncOptions]
-type Or_ServerCapabilities_textDocumentSync struct {
-	Value any `json:"value"`
-}
-
-// created for Or [TypeDefinitionOptions TypeDefinitionRegistrationOptions bool]
-type Or_ServerCapabilities_typeDefinitionProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [TypeHierarchyOptions TypeHierarchyRegistrationOptions bool]
-type Or_ServerCapabilities_typeHierarchyProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [WorkspaceSymbolOptions bool]
-type Or_ServerCapabilities_workspaceSymbolProvider struct {
-	Value any `json:"value"`
-}
-
-// created for Or [MarkupContent string]
-type Or_SignatureInformation_documentation struct {
-	Value any `json:"value"`
-}
-
-// created for Or [AnnotatedTextEdit SnippetTextEdit TextEdit]
-type Or_TextDocumentEdit_edits_Elem struct {
-	Value any `json:"value"`
-}
-
-// created for Or [TextDocumentFilterLanguage TextDocumentFilterPattern TextDocumentFilterScheme]
-type Or_TextDocumentFilter struct {
-	Value any `json:"value"`
-}
-
-// created for Or [SaveOptions bool]
-type Or_TextDocumentSyncOptions_save struct {
-	Value any `json:"value"`
-}
-
-// created for Or [WorkspaceFullDocumentDiagnosticReport WorkspaceUnchangedDocumentDiagnosticReport]
-type Or_WorkspaceDocumentDiagnosticReport struct {
-	Value any `json:"value"`
-}
-
-// created for Or [CreateFile DeleteFile RenameFile TextDocumentEdit]
-type Or_WorkspaceEdit_documentChanges_Elem struct {
-	Value any `json:"value"`
-}
-
-// created for Or [TextDocumentContentOptions TextDocumentContentRegistrationOptions]
-type Or_WorkspaceOptions_textDocumentContent struct {
-	Value any `json:"value"`
 }
 
 // created for Literal (Lit_SemanticTokensOptions_range_Item1)
@@ -4546,6 +4255,12 @@ type ResourceOperation struct {
 }
 type ResourceOperationKind string
 
+// created for Or [InlineCompletionList []InlineCompletionItem]
+type ResultTextDocumentInlineCompletion struct {
+	InlineCompletionList  *InlineCompletionList
+	InlineCompletionItems *[]InlineCompletionItem
+}
+
 // Save options.
 //
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#saveOptions
@@ -4752,10 +4467,22 @@ type SemanticTokensOptions struct {
 	Legend SemanticTokensLegend `json:"legend"`
 	// Server supports providing semantic tokens for a specific range
 	// of a document.
-	Range *Or_SemanticTokensOptions_range `json:"range,omitempty"`
+	Range *SemanticTokensOptionsRange `json:"range,omitempty"`
 	// Server supports providing semantic tokens for a full document.
-	Full *Or_SemanticTokensOptions_full `json:"full,omitempty"`
+	Full *SemanticTokensOptionsFull `json:"full,omitempty"`
 	WorkDoneProgressOptions
+}
+
+// created for Or [SemanticTokensFullDelta bool]
+type SemanticTokensOptionsFull struct {
+	SemanticTokensFullDelta *SemanticTokensFullDelta
+	Bool                    *bool
+}
+
+// created for Or [PRangeESemanticTokensOptions bool]
+type SemanticTokensOptionsRange struct {
+	PRangeESemanticTokensOptions *PRangeESemanticTokensOptions
+	Bool                         *bool
 }
 
 // @since 3.16.0
@@ -4828,99 +4555,105 @@ type ServerCapabilities struct {
 	// Defines how text documents are synced. Is either a detailed structure
 	// defining each notification or for backwards compatibility the
 	// TextDocumentSyncKind number.
-	TextDocumentSync any `json:"textDocumentSync,omitempty"`
+	TextDocumentSync *TextDocumentSyncOptions `json:"textDocumentSync,omitempty"`
 	// Defines how notebook documents are synced.
 	//
 	// @since 3.17.0
-	NotebookDocumentSync *Or_ServerCapabilities_notebookDocumentSync `json:"notebookDocumentSync,omitempty"`
+	NotebookDocumentSync *NotebookDocumentSyncRegistrationOptions `json:"notebookDocumentSync,omitempty"`
 	// The server provides completion support.
 	CompletionProvider *CompletionOptions `json:"completionProvider,omitempty"`
 	// The server provides hover support.
-	HoverProvider *Or_ServerCapabilities_hoverProvider `json:"hoverProvider,omitempty"`
+	HoverProvider *HoverOptions `json:"hoverProvider,omitempty"`
 	// The server provides signature help support.
 	SignatureHelpProvider *SignatureHelpOptions `json:"signatureHelpProvider,omitempty"`
 	// The server provides Goto Declaration support.
-	DeclarationProvider *Or_ServerCapabilities_declarationProvider `json:"declarationProvider,omitempty"`
+	DeclarationProvider *DeclarationRegistrationOptions `json:"declarationProvider,omitempty"`
 	// The server provides goto definition support.
-	DefinitionProvider *Or_ServerCapabilities_definitionProvider `json:"definitionProvider,omitempty"`
+	DefinitionProvider *DefinitionOptions `json:"definitionProvider,omitempty"`
 	// The server provides Goto Type Definition support.
-	TypeDefinitionProvider *Or_ServerCapabilities_typeDefinitionProvider `json:"typeDefinitionProvider,omitempty"`
+	TypeDefinitionProvider *TypeDefinitionRegistrationOptions `json:"typeDefinitionProvider,omitempty"`
 	// The server provides Goto Implementation support.
-	ImplementationProvider *Or_ServerCapabilities_implementationProvider `json:"implementationProvider,omitempty"`
+	ImplementationProvider *ImplementationRegistrationOptions `json:"implementationProvider,omitempty"`
 	// The server provides find references support.
-	ReferencesProvider *Or_ServerCapabilities_referencesProvider `json:"referencesProvider,omitempty"`
+	ReferencesProvider *ReferenceOptions `json:"referencesProvider,omitempty"`
 	// The server provides document highlight support.
-	DocumentHighlightProvider *Or_ServerCapabilities_documentHighlightProvider `json:"documentHighlightProvider,omitempty"`
+	DocumentHighlightProvider *DocumentHighlightOptions `json:"documentHighlightProvider,omitempty"`
 	// The server provides document symbol support.
-	DocumentSymbolProvider *Or_ServerCapabilities_documentSymbolProvider `json:"documentSymbolProvider,omitempty"`
+	DocumentSymbolProvider *DocumentSymbolOptions `json:"documentSymbolProvider,omitempty"`
 	// The server provides code actions. CodeActionOptions may only be
 	// specified if the client states that it supports
 	// `codeActionLiteralSupport` in its initial `initialize` request.
-	CodeActionProvider any `json:"codeActionProvider,omitempty"`
+	CodeActionProvider *CodeActionOptions `json:"codeActionProvider,omitempty"`
 	// The server provides code lens.
 	CodeLensProvider *CodeLensOptions `json:"codeLensProvider,omitempty"`
 	// The server provides document link support.
 	DocumentLinkProvider *DocumentLinkOptions `json:"documentLinkProvider,omitempty"`
 	// The server provides color provider support.
-	ColorProvider *Or_ServerCapabilities_colorProvider `json:"colorProvider,omitempty"`
+	ColorProvider *DocumentColorRegistrationOptions `json:"colorProvider,omitempty"`
 	// The server provides workspace symbol support.
-	WorkspaceSymbolProvider *Or_ServerCapabilities_workspaceSymbolProvider `json:"workspaceSymbolProvider,omitempty"`
+	WorkspaceSymbolProvider *WorkspaceSymbolOptions `json:"workspaceSymbolProvider,omitempty"`
 	// The server provides document formatting.
-	DocumentFormattingProvider *Or_ServerCapabilities_documentFormattingProvider `json:"documentFormattingProvider,omitempty"`
+	DocumentFormattingProvider *DocumentFormattingOptions `json:"documentFormattingProvider,omitempty"`
 	// The server provides document range formatting.
-	DocumentRangeFormattingProvider *Or_ServerCapabilities_documentRangeFormattingProvider `json:"documentRangeFormattingProvider,omitempty"`
+	DocumentRangeFormattingProvider *DocumentRangeFormattingOptions `json:"documentRangeFormattingProvider,omitempty"`
 	// The server provides document formatting on typing.
 	DocumentOnTypeFormattingProvider *DocumentOnTypeFormattingOptions `json:"documentOnTypeFormattingProvider,omitempty"`
 	// The server provides rename support. RenameOptions may only be
 	// specified if the client states that it supports
 	// `prepareSupport` in its initial `initialize` request.
-	RenameProvider any `json:"renameProvider,omitempty"`
+	RenameProvider *RenameOptions `json:"renameProvider,omitempty"`
 	// The server provides folding provider support.
-	FoldingRangeProvider *Or_ServerCapabilities_foldingRangeProvider `json:"foldingRangeProvider,omitempty"`
+	FoldingRangeProvider *FoldingRangeRegistrationOptions `json:"foldingRangeProvider,omitempty"`
 	// The server provides selection range support.
-	SelectionRangeProvider *Or_ServerCapabilities_selectionRangeProvider `json:"selectionRangeProvider,omitempty"`
+	SelectionRangeProvider *SelectionRangeRegistrationOptions `json:"selectionRangeProvider,omitempty"`
 	// The server provides execute command support.
 	ExecuteCommandProvider *ExecuteCommandOptions `json:"executeCommandProvider,omitempty"`
 	// The server provides call hierarchy support.
 	//
 	// @since 3.16.0
-	CallHierarchyProvider *Or_ServerCapabilities_callHierarchyProvider `json:"callHierarchyProvider,omitempty"`
+	CallHierarchyProvider *CallHierarchyRegistrationOptions `json:"callHierarchyProvider,omitempty"`
 	// The server provides linked editing range support.
 	//
 	// @since 3.16.0
-	LinkedEditingRangeProvider *Or_ServerCapabilities_linkedEditingRangeProvider `json:"linkedEditingRangeProvider,omitempty"`
+	LinkedEditingRangeProvider *LinkedEditingRangeRegistrationOptions `json:"linkedEditingRangeProvider,omitempty"`
 	// The server provides semantic tokens support.
 	//
 	// @since 3.16.0
-	SemanticTokensProvider any `json:"semanticTokensProvider,omitempty"`
+	SemanticTokensProvider *SemanticTokensRegistrationOptions `json:"semanticTokensProvider,omitempty"`
 	// The server provides moniker support.
 	//
 	// @since 3.16.0
-	MonikerProvider *Or_ServerCapabilities_monikerProvider `json:"monikerProvider,omitempty"`
+	MonikerProvider *MonikerRegistrationOptions `json:"monikerProvider,omitempty"`
 	// The server provides type hierarchy support.
 	//
 	// @since 3.17.0
-	TypeHierarchyProvider *Or_ServerCapabilities_typeHierarchyProvider `json:"typeHierarchyProvider,omitempty"`
+	TypeHierarchyProvider *TypeHierarchyRegistrationOptions `json:"typeHierarchyProvider,omitempty"`
 	// The server provides inline values.
 	//
 	// @since 3.17.0
-	InlineValueProvider *Or_ServerCapabilities_inlineValueProvider `json:"inlineValueProvider,omitempty"`
+	InlineValueProvider *InlineValueRegistrationOptions `json:"inlineValueProvider,omitempty"`
 	// The server provides inlay hints.
 	//
 	// @since 3.17.0
-	InlayHintProvider any `json:"inlayHintProvider,omitempty"`
+	InlayHintProvider *InlayHintRegistrationOptions `json:"inlayHintProvider,omitempty"`
 	// The server has support for pull model diagnostics.
 	//
 	// @since 3.17.0
-	DiagnosticProvider *Or_ServerCapabilities_diagnosticProvider `json:"diagnosticProvider,omitempty"`
+	DiagnosticProvider *ServerCapabilitiesDiagnosticProvider `json:"diagnosticProvider,omitempty"`
 	// Inline completion options used during static registration.
 	//
 	// @since 3.18.0
-	InlineCompletionProvider *Or_ServerCapabilities_inlineCompletionProvider `json:"inlineCompletionProvider,omitempty"`
+	InlineCompletionProvider *InlineCompletionOptions `json:"inlineCompletionProvider,omitempty"`
 	// Workspace specific server capabilities.
 	Workspace *WorkspaceOptions `json:"workspace,omitempty"`
 	// Experimental server capabilities.
 	Experimental any `json:"experimental,omitempty"`
+}
+
+// created for Or [DiagnosticOptions DiagnosticRegistrationOptions]
+type ServerCapabilitiesDiagnosticProvider struct {
+	DiagnosticOptions             *DiagnosticOptions
+	DiagnosticRegistrationOptions *DiagnosticRegistrationOptions
 }
 
 // @since 3.18.0
@@ -5161,7 +4894,7 @@ type SignatureInformation struct {
 	Label string `json:"label"`
 	// The human-readable doc-comment of this signature. Will be shown
 	// in the UI but can be omitted.
-	Documentation *Or_SignatureInformation_documentation `json:"documentation,omitempty"`
+	Documentation *SignatureInformationDocumentation `json:"documentation,omitempty"`
 	// The parameters of this signature.
 	Parameters []ParameterInformation `json:"parameters,omitempty"`
 	// The index of the active parameter.
@@ -5176,6 +4909,12 @@ type SignatureInformation struct {
 	//
 	// @since 3.16.0
 	ActiveParameter *uint32 `json:"activeParameter,omitempty"`
+}
+
+// created for Or [MarkupContent string]
+type SignatureInformationDocumentation struct {
+	MarkupContent *MarkupContent
+	String        *string
 }
 
 // An interactive text edit.
@@ -5237,7 +4976,6 @@ type StringValue struct {
 //
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#symbolInformation
 type SymbolInformation struct {
-	// extends BaseSymbolInformation
 	// Indicates if this symbol is deprecated.
 	//
 	// @deprecated Use tags instead
@@ -5252,19 +4990,7 @@ type SymbolInformation struct {
 	// syntax tree. It can therefore not be used to re-construct a hierarchy of
 	// the symbols.
 	Location Location `json:"location"`
-	// The name of this symbol.
-	Name string `json:"name"`
-	// The kind of this symbol.
-	Kind SymbolKind `json:"kind"`
-	// Tags for this symbol.
-	//
-	// @since 3.16.0
-	Tags []SymbolTag `json:"tags,omitempty"`
-	// The name of the symbol containing this symbol. This information is for
-	// user interface purposes (e.g. to render a qualifier in the user interface
-	// if necessary). It can't be used to re-infer a hierarchy for the document
-	// symbols.
-	ContainerName string `json:"containerName,omitempty"`
+	BaseSymbolInformation
 }
 
 // A symbol kind.
@@ -5493,29 +5219,23 @@ type TextDocumentEdit struct {
 	//
 	// @since 3.18.0 - support for SnippetTextEdit. This is guarded using a
 	// client capability.
-	Edits []Or_TextDocumentEdit_edits_Elem `json:"edits"`
+	Edits []TextDocumentEditEditsElem `json:"edits"`
 }
 
-// A document filter denotes a document by different properties like
-// the {@link TextDocument.languageId language}, the {@link Uri.scheme scheme} of
-// its resource, or a glob-pattern that is applied to the {@link TextDocument.fileName path}.
-//
-// Glob patterns can have the following syntax:
-//
-//   - `*` to match zero or more characters in a path segment
-//   - `?` to match on one character in a path segment
-//   - `**` to match any number of path segments, including none
-//   - `{}` to group sub patterns into an OR expression. (e.g. `**​/*.{ts,js}` matches all TypeScript and JavaScript files)
-//   - `[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
-//   - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
-//
-// @sample A language filter that applies to typescript files on disk: `{ language: 'typescript', scheme: 'file' }`
-// @sample A language filter that applies to all package.json paths: `{ language: 'json', pattern: '**package.json' }`
-//
-// @since 3.17.0
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#textDocumentFilter
-type TextDocumentFilter = Or_TextDocumentFilter // (alias)
+// created for Or [AnnotatedTextEdit SnippetTextEdit TextEdit]
+type TextDocumentEditEditsElem struct {
+	AnnotatedTextEdit *AnnotatedTextEdit
+	SnippetTextEdit   *SnippetTextEdit
+	TextEdit          *TextEdit
+}
+
+// created for Or [TextDocumentFilterLanguage TextDocumentFilterPattern TextDocumentFilterScheme]
+type TextDocumentFilter struct {
+	TextDocumentFilterLanguage *TextDocumentFilterLanguage
+	TextDocumentFilterPattern  *TextDocumentFilterPattern
+	TextDocumentFilterScheme   *TextDocumentFilterScheme
+}
+
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#textDocumentFilterClientCapabilities
 type TextDocumentFilterClientCapabilities struct {
 	// The client supports Relative Patterns.
@@ -5807,12 +5527,6 @@ type TypeHierarchySupertypesParams struct {
 	PartialResultParams
 }
 
-// created for Tuple
-type UIntCommaUInt struct {
-	Fld0 uint32 `json:"fld0"`
-	Fld1 uint32 `json:"fld1"`
-}
-
 // A diagnostic report indicating that the last returned
 // report is still accurate.
 //
@@ -5954,12 +5668,6 @@ type WorkDoneProgressOptions struct {
 	WorkDoneProgress bool `json:"workDoneProgress,omitempty"`
 }
 
-// created for And
-type WorkDoneProgressOptionsAndTextDocumentRegistrationOptions struct {
-	WorkDoneProgressOptions
-	TextDocumentRegistrationOptions
-}
-
 // See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#workDoneProgressParams
 type WorkDoneProgressParams struct {
 	// An optional token that a server can use to report work done progress.
@@ -6087,12 +5795,12 @@ type WorkspaceDiagnosticReportPartialResult struct {
 	Items []WorkspaceDocumentDiagnosticReport `json:"items"`
 }
 
-// A workspace diagnostic document report.
-//
-// @since 3.17.0
-//
-// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#workspaceDocumentDiagnosticReport
-type WorkspaceDocumentDiagnosticReport = Or_WorkspaceDocumentDiagnosticReport // (alias)
+// created for Or [WorkspaceFullDocumentDiagnosticReport WorkspaceUnchangedDocumentDiagnosticReport]
+type WorkspaceDocumentDiagnosticReport struct {
+	WorkspaceFullDocumentDiagnosticReport      *WorkspaceFullDocumentDiagnosticReport
+	WorkspaceUnchangedDocumentDiagnosticReport *WorkspaceUnchangedDocumentDiagnosticReport
+}
+
 // A workspace edit represents changes to many resources managed in the workspace. The edit
 // should either provide `changes` or `documentChanges`. If documentChanges are present
 // they are preferred over `changes` if the client can handle versioned document edits.
@@ -6269,7 +5977,13 @@ type WorkspaceOptions struct {
 	// The server supports the `workspace/textDocumentContent` request.
 	//
 	// @since 3.18.0
-	TextDocumentContent *Or_WorkspaceOptions_textDocumentContent `json:"textDocumentContent,omitempty"`
+	TextDocumentContent *WorkspaceOptionsTextDocumentContent `json:"textDocumentContent,omitempty"`
+}
+
+// created for Or [TextDocumentContentOptions TextDocumentContentRegistrationOptions]
+type WorkspaceOptionsTextDocumentContent struct {
+	TextDocumentContentOptions             *TextDocumentContentOptions
+	TextDocumentContentRegistrationOptions *TextDocumentContentRegistrationOptions
 }
 
 // A special workspace symbol that supports locations without a range.
@@ -6285,7 +5999,7 @@ type WorkspaceSymbol struct {
 	// capability `workspace.symbol.resolveSupport`.
 	//
 	// See SymbolInformation#location for more details.
-	Location OrPLocation_workspace_symbol `json:"location"`
+	Location WorkspaceSymbolLocation `json:"location"`
 	// A data entry field that is preserved on a workspace symbol between a
 	// workspace symbol request and a workspace symbol resolve request.
 	Data any `json:"data,omitempty"`
@@ -6311,6 +6025,12 @@ type WorkspaceSymbolClientCapabilities struct {
 	//
 	// @since 3.17.0
 	ResolveSupport *ClientSymbolResolveOptions `json:"resolveSupport,omitempty"`
+}
+
+// created for Or [Location LocationUriOnly]
+type WorkspaceSymbolLocation struct {
+	Location        *Location
+	LocationUriOnly *LocationUriOnly
 }
 
 // Server capabilities for a {@link WorkspaceSymbolRequest}.

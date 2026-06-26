@@ -74,7 +74,7 @@ func (c clientConn) Call(ctx context.Context, method string, params any, result 
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
 		detached := detach(ctx)
-		_ = c.conn.Notify(detached, "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
+		_ = c.conn.Notify(detached, "$/cancelRequest", &CancelParams{ID: cancelParamsFromID(call.ID())})
 	}
 	return err
 }
@@ -111,7 +111,7 @@ func Call(ctx context.Context, conn *jsonrpc2.Connection, method string, params 
 	call := conn.Call(ctx, method, params)
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
-		_ = conn.Notify(detach(ctx), "$/cancelRequest", &CancelParams{ID: call.ID().Raw()})
+		_ = conn.Notify(detach(ctx), "$/cancelRequest", &CancelParams{ID: cancelParamsFromID(call.ID())})
 	}
 	return err
 }
@@ -148,4 +148,16 @@ func EncodeMessage(msg any) ([]byte, error) {
 	buf.WriteString(fmt.Sprintf("Content-Length: %d\r\n\r\n", len(data)))
 	buf.Write(data)
 	return buf.Bytes(), nil
+}
+
+func cancelParamsFromID(id jsonrpc2.ID) CancelParamsId {
+	switch v := id.Raw().(type) {
+	case int32:
+		return CancelParamsId{Int32: &v}
+	case string:
+		return CancelParamsId{String: &v}
+	default:
+		// Invalid, return empty value
+		return CancelParamsId{}
+	}
 }

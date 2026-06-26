@@ -92,7 +92,7 @@ type Server interface {
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#textDocument_inlayHint
 	InlayHint(context.Context, *InlayHintParams) ([]InlayHint, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#textDocument_inlineCompletion
-	InlineCompletion(context.Context, *InlineCompletionParams) (*Or_Result_textDocument_inlineCompletion, error)
+	InlineCompletion(context.Context, *InlineCompletionParams) (*ResultTextDocumentInlineCompletion, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#textDocument_inlineValue
 	InlineValue(context.Context, *InlineValueParams) ([]InlineValue, error)
 	// See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification#textDocument_linkedEditingRange
@@ -1124,8 +1124,8 @@ func (s *serverDispatcher) InlayHint(ctx context.Context, params *InlayHintParam
 	}
 	return result, nil
 }
-func (s *serverDispatcher) InlineCompletion(ctx context.Context, params *InlineCompletionParams) (*Or_Result_textDocument_inlineCompletion, error) {
-	var result *Or_Result_textDocument_inlineCompletion
+func (s *serverDispatcher) InlineCompletion(ctx context.Context, params *InlineCompletionParams) (*ResultTextDocumentInlineCompletion, error) {
+	var result *ResultTextDocumentInlineCompletion
 	if err := s.sender.Call(ctx, "textDocument/inlineCompletion", params, &result); err != nil {
 		return nil, err
 	}
