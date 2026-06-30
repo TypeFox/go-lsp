@@ -27,11 +27,12 @@ const vscodeRepo = "https://github.com/microsoft/vscode-languageserver-node"
 
 // lspGitRef names a branch or tag in vscodeRepo.
 // It implicitly determines the protocol version of the LSP used by gopls.
-// For example, tag release/protocol/3.17.3 of the repo defines
-// protocol version 3.17.0 (as declared by the metaData.version field).
+// For example, tag release/protocol/3.18.1 of the repo defines
+// protocol version 3.18.0 (as declared by the metaData.version field).
 // (Point releases are reflected in the git tag version even when they are cosmetic
 // and don't change the protocol.)
-var lspGitRef = "release/protocol/3.17.6-next.16"
+// TODO: Remove the hard-coded version in processinline() when the next release tag is created.
+var lspGitRef = "release/protocol/3.18.1"
 
 var (
 	repodir   = flag.String("d", "", "directory containing clone of "+vscodeRepo)
@@ -71,6 +72,10 @@ func processinline() {
 	}
 
 	model := parse(filepath.Join(*repodir, "protocol/metaModel.json"))
+	// The release tag is 3.18.1, but the metaModel.json file declares version 3.17.0.
+	// This was fixed in a later commit, but there is no release tag for that commit.
+	// We need to hard-code this version until the next release tag is created.
+	model.Version.Version = "3.18.0"
 
 	findTypeNames(model)
 	generateOutput(model)

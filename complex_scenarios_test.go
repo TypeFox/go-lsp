@@ -87,7 +87,9 @@ func TestDiagnostics(t *testing.T) {
 					Severity: lsp.SeverityError,
 					Code:     "unused",
 					Source:   "go",
-					Message:  "variable 'x' is unused",
+					Message: lsp.Or_Diagnostic_message{
+						Value: "variable 'x' is unused",
+					},
 					RelatedInformation: []lsp.DiagnosticRelatedInformation{
 						{
 							Location: lsp.Location{
@@ -109,8 +111,10 @@ func TestDiagnostics(t *testing.T) {
 					Severity: lsp.SeverityWarning,
 					Code:     "deprecated",
 					Source:   "go",
-					Message:  "function is deprecated",
-					Tags:     []lsp.DiagnosticTag{lsp.Deprecated},
+					Message: lsp.Or_Diagnostic_message{
+						Value: "function is deprecated",
+					},
+					Tags: []lsp.DiagnosticTag{lsp.Deprecated},
 				},
 			},
 		}
@@ -200,7 +204,9 @@ func TestCodeAction(t *testing.T) {
 						},
 						Severity: lsp.SeverityError,
 						Code:     "unused",
-						Message:  "unused variable",
+						Message: lsp.Or_Diagnostic_message{
+							Value: "unused variable",
+						},
 					},
 				},
 				Only: []lsp.CodeActionKind{lsp.QuickFix},
