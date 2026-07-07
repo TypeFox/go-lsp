@@ -85,10 +85,12 @@ func TestDiagnostics(t *testing.T) {
 						End:   lsp.Position{Line: 5, Character: 15},
 					},
 					Severity: lsp.SeverityError,
-					Code:     "unused",
-					Source:   "go",
-					Message: lsp.Or_Diagnostic_message{
-						Value: "variable 'x' is unused",
+					Code: lsp.DiagnosticCode{
+						String: new("unused"),
+					},
+					Source: "go",
+					Message: lsp.DiagnosticMessage{
+						String: new("variable 'x' is unused"),
 					},
 					RelatedInformation: []lsp.DiagnosticRelatedInformation{
 						{
@@ -109,10 +111,12 @@ func TestDiagnostics(t *testing.T) {
 						End:   lsp.Position{Line: 10, Character: 20},
 					},
 					Severity: lsp.SeverityWarning,
-					Code:     "deprecated",
-					Source:   "go",
-					Message: lsp.Or_Diagnostic_message{
-						Value: "function is deprecated",
+					Code: lsp.DiagnosticCode{
+						String: new("deprecated"),
+					},
+					Source: "go",
+					Message: lsp.DiagnosticMessage{
+						String: new("function is deprecated"),
 					},
 					Tags: []lsp.DiagnosticTag{lsp.Deprecated},
 				},
@@ -203,9 +207,11 @@ func TestCodeAction(t *testing.T) {
 							End:   lsp.Position{Line: 5, Character: 10},
 						},
 						Severity: lsp.SeverityError,
-						Code:     "unused",
-						Message: lsp.Or_Diagnostic_message{
-							Value: "unused variable",
+						Code: lsp.DiagnosticCode{
+							String: new("unused"),
+						},
+						Message: lsp.DiagnosticMessage{
+							String: new("unused variable"),
 						},
 					},
 				},

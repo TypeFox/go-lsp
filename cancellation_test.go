@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"typefox.dev/lsp"
 )
 
@@ -17,7 +18,7 @@ func TestCancellationSupport(t *testing.T) {
 	t.Run("CancelParams", func(t *testing.T) {
 		// Test CancelParams structure
 		cancelParams := lsp.CancelParams{
-			ID: "test-request-123",
+			ID: lsp.CancelParamsIdFromString("test-request-123"),
 		}
 
 		data, err := json.Marshal(cancelParams)
@@ -31,15 +32,15 @@ func TestCancellationSupport(t *testing.T) {
 			t.Fatalf("Failed to unmarshal CancelParams: %v", err)
 		}
 
-		if cancelParams.ID != unmarshaled.ID {
-			t.Errorf("Expected ID %v, got %v", cancelParams.ID, unmarshaled.ID)
+		if diff := cmp.Diff(cancelParams, unmarshaled); diff != "" {
+			t.Errorf("CancelParams mismatch (-want +got):\n%s", diff)
 		}
 	})
 
 	t.Run("CancelNotificationStructure", func(t *testing.T) {
 		// Test that cancel notification structure is correct
 		cancelParams := lsp.CancelParams{
-			ID: "request-to-cancel",
+			ID: lsp.CancelParamsIdFromString("request-to-cancel"),
 		}
 
 		// Test JSON marshaling
@@ -54,8 +55,8 @@ func TestCancellationSupport(t *testing.T) {
 			t.Fatalf("Failed to unmarshal CancelParams: %v", err)
 		}
 
-		if cancelParams.ID != unmarshaled.ID {
-			t.Errorf("Expected ID %v, got %v", cancelParams.ID, unmarshaled.ID)
+		if diff := cmp.Diff(cancelParams, unmarshaled); diff != "" {
+			t.Errorf("CancelParams mismatch (-want +got):\n%s", diff)
 		}
 	})
 }
@@ -67,7 +68,7 @@ func TestProgressSupport(t *testing.T) {
 		// Test ProgressParams structure
 		progressParams := lsp.ProgressParams{
 			Token: "progress-token-123",
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"kind":    "begin",
 				"title":   "Processing",
 				"message": "Starting work",
@@ -85,8 +86,8 @@ func TestProgressSupport(t *testing.T) {
 			t.Fatalf("Failed to unmarshal ProgressParams: %v", err)
 		}
 
-		if progressParams.Token != unmarshaled.Token {
-			t.Errorf("Expected Token %v, got %v", progressParams.Token, unmarshaled.Token)
+		if diff := cmp.Diff(progressParams, unmarshaled); diff != "" {
+			t.Errorf("ProgressParams mismatch (-want +got):\n%s", diff)
 		}
 	})
 
@@ -111,11 +112,8 @@ func TestProgressSupport(t *testing.T) {
 			t.Fatalf("Failed to unmarshal WorkDoneProgressBegin: %v", err)
 		}
 
-		if begin.Title != unmarshaled.Title {
-			t.Errorf("Expected Title %v, got %v", begin.Title, unmarshaled.Title)
-		}
-		if begin.Cancellable != unmarshaled.Cancellable {
-			t.Errorf("Expected Cancellable %v, got %v", begin.Cancellable, unmarshaled.Cancellable)
+		if diff := cmp.Diff(begin, unmarshaled); diff != "" {
+			t.Errorf("WorkDoneProgressBegin mismatch (-want +got):\n%s", diff)
 		}
 	})
 
@@ -139,8 +137,8 @@ func TestProgressSupport(t *testing.T) {
 			t.Fatalf("Failed to unmarshal WorkDoneProgressReport: %v", err)
 		}
 
-		if *report.Percentage != *unmarshaled.Percentage {
-			t.Errorf("Expected Percentage %v, got %v", *report.Percentage, *unmarshaled.Percentage)
+		if diff := cmp.Diff(report, unmarshaled); diff != "" {
+			t.Errorf("WorkDoneProgressReport mismatch (-want +got):\n%s", diff)
 		}
 	})
 

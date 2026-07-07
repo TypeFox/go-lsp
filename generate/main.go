@@ -79,6 +79,7 @@ func processinline() {
 
 	findTypeNames(model)
 	generateOutput(model)
+	pruneUnusedTypes(handwrittenSource())
 
 	fileHdr = fileHeader(model)
 
@@ -87,8 +88,39 @@ func processinline() {
 	writeserver()
 	writeprotocol()
 	writejsons()
+	writebuilders()
 
 	checkTables()
+}
+
+// generatedFiles are the Go files this tool writes; everything else in the
+// output directory is hand-written and may reference generated types.
+var generatedFiles = map[string]bool{
+	"tsclient.go": true, "tsserver.go": true, "tsprotocol.go": true,
+	"tsjson.go": true, "tsbuilders.go": true,
+}
+
+// handwrittenSource returns the concatenated contents of every hand-written .go
+// file in the output directory, so pruneUnusedTypes keeps types they reference.
+func handwrittenSource() string {
+	entries, err := os.ReadDir(*outputdir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var b strings.Builder
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || generatedFiles[name] {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(*outputdir, name))
+		if err != nil {
+			log.Fatal(err)
+		}
+		b.Write(data)
+		b.WriteByte('\n')
+	}
+	return b.String()
 }
 
 // common file header for output files
@@ -188,10 +220,7 @@ func writeprotocol() {
 func writejsons() {
 	out := new(bytes.Buffer)
 	fmt.Fprintln(out, fileHdr)
-	out.WriteString("import (\n")
-	out.WriteString("    \"encoding/json\"\n")
-	out.WriteString("    \"fmt\"\n")
-	out.WriteString(")\n")
+	out.WriteString("import \"encoding/json\"\n\n")
 
 	out.WriteString(`
 // UnmarshalError indicates that a JSON value did not conform to
@@ -209,6 +238,20 @@ func (e UnmarshalError) Error() string {
 		out.WriteString(jsons[k])
 	}
 	formatTo("tsjson.go", out.Bytes())
+}
+
+func writebuilders() {
+	body := new(bytes.Buffer)
+	for _, k := range builders.keys() {
+		body.WriteString(builders[k])
+	}
+	out := new(bytes.Buffer)
+	fmt.Fprintln(out, fileHdr)
+	if bytes.Contains(body.Bytes(), []byte("json.")) {
+		out.WriteString("import \"encoding/json\"\n\n")
+	}
+	out.Write(body.Bytes())
+	formatTo("tsbuilders.go", out.Bytes())
 }
 
 // formatTo formats the Go source and writes it to *outputdir/basename.

@@ -35,6 +35,7 @@ var goplsStar = map[prop]int{
 	{"CompletionParams", "context"}:                    wantOpt, // needs nil checks
 
 	{"Diagnostic", "severity"}:            wantOpt,     // needs nil checks or more careful thought
+	{"Diagnostic", "code"}:                wantOpt,     // internal value returns null if not set
 	{"DidSaveTextDocumentParams", "text"}: wantOptStar, // capabilities_test.go:112 logic
 	{"DocumentHighlight", "kind"}:         wantOpt,     // need temporary variables
 
@@ -69,10 +70,8 @@ var usedGoplsStar = make(map[prop]bool)
 
 // For gopls compatibility, use a different, typically more restrictive, type for some fields.
 var renameProp = map[prop]string{
-	{"CancelParams", "id"}:   "any",
 	{"Command", "arguments"}: "[]json.RawMessage",
 	{"CodeAction", "data"}:   "json.RawMessage", // delay unmarshalling commands
-	{"Diagnostic", "code"}:   "any",
 	{"Diagnostic", "data"}:   "json.RawMessage", // delay unmarshalling quickfixes
 
 	{"DocumentDiagnosticReportPartialResult", "relatedDocuments"}: "map[DocumentURI]any",
@@ -85,16 +84,35 @@ var renameProp = map[prop]string{
 	{"RelatedFullDocumentDiagnosticReport", "relatedDocuments"}:      "map[DocumentURI]any",
 	{"RelatedUnchangedDocumentDiagnosticReport", "relatedDocuments"}: "map[DocumentURI]any",
 
-	// PJW: this one is tricky.
-	{"ServerCapabilities", "codeActionProvider"}: "any",
+	// The server capabilities are mostly bool | struct unions, with some of them being only structs
+	// This map unifies this into a single struct type for each capability
+	{"ServerCapabilities", "codeActionProvider"}:              "CodeActionOptions",
+	{"ServerCapabilities", "inlayHintProvider"}:               "InlayHintRegistrationOptions",
+	{"ServerCapabilities", "renameProvider"}:                  "RenameOptions",
+	{"ServerCapabilities", "documentFormattingProvider"}:      "DocumentFormattingOptions",
+	{"ServerCapabilities", "semanticTokensProvider"}:          "SemanticTokensRegistrationOptions",
+	{"ServerCapabilities", "callHierarchyProvider"}:           "CallHierarchyRegistrationOptions",
+	{"ServerCapabilities", "colorProvider"}:                   "DocumentColorRegistrationOptions",
+	{"ServerCapabilities", "declarationProvider"}:             "DeclarationRegistrationOptions",
+	{"ServerCapabilities", "definitionProvider"}:              "DefinitionOptions",
+	{"ServerCapabilities", "documentHighlightProvider"}:       "DocumentHighlightOptions",
+	{"ServerCapabilities", "documentRangeFormattingProvider"}: "DocumentRangeFormattingOptions",
+	{"ServerCapabilities", "documentSymbolProvider"}:          "DocumentSymbolOptions",
+	{"ServerCapabilities", "foldingRangeProvider"}:            "FoldingRangeRegistrationOptions",
+	{"ServerCapabilities", "hoverProvider"}:                   "HoverOptions",
+	{"ServerCapabilities", "implementationProvider"}:          "ImplementationRegistrationOptions",
+	{"ServerCapabilities", "inlineCompletionProvider"}:        "InlineCompletionOptions",
+	{"ServerCapabilities", "inlineValueProvider"}:             "InlineValueRegistrationOptions",
+	{"ServerCapabilities", "linkedEditingRangeProvider"}:      "LinkedEditingRangeRegistrationOptions",
+	{"ServerCapabilities", "monikerProvider"}:                 "MonikerRegistrationOptions",
+	{"ServerCapabilities", "notebookDocumentSync"}:            "NotebookDocumentSyncRegistrationOptions",
+	{"ServerCapabilities", "referencesProvider"}:              "ReferenceOptions",
+	{"ServerCapabilities", "selectionRangeProvider"}:          "SelectionRangeRegistrationOptions",
+	{"ServerCapabilities", "typeDefinitionProvider"}:          "TypeDefinitionRegistrationOptions",
+	{"ServerCapabilities", "typeHierarchyProvider"}:           "TypeHierarchyRegistrationOptions",
+	{"ServerCapabilities", "workspaceSymbolProvider"}:         "WorkspaceSymbolOptions",
 
-	{"ServerCapabilities", "inlayHintProvider"}: "any",
-	// slightly tricky
-	{"ServerCapabilities", "renameProvider"}: "any",
-	// slightly tricky
-	{"ServerCapabilities", "semanticTokensProvider"}: "any",
-	// slightly tricky
-	{"ServerCapabilities", "textDocumentSync"}: "any",
+	{"ServerCapabilities", "textDocumentSync"}: "TextDocumentSyncOptions",
 	{"TextDocumentSyncOptions", "save"}:        "SaveOptions",
 	{"WorkspaceEdit", "documentChanges"}:       "[]DocumentChange",
 }
@@ -139,10 +157,7 @@ var goplsType = map[string]string{
 	"Lit_SemanticTokensOptions_range_Item1": "PRangeESemanticTokensOptions",
 
 	"Or_Declaration": "[]Location",
-	"Or_DidChangeConfigurationRegistrationOptions_section": "OrPSection_workspace_didChangeConfiguration",
-	"Or_InlayHintLabelPart_tooltip":                        "OrPTooltipPLabel",
-	"Or_InlayHint_tooltip":                                 "OrPTooltip_textDocument_inlayHint",
-	"Or_LSPAny":                                            "any",
+	"Or_LSPAny":      "any",
 
 	"Or_ParameterInformation_documentation":            "string",
 	"Or_ParameterInformation_label":                    "string",
@@ -160,7 +175,6 @@ var goplsType = map[string]string{
 	"Or_RelativePattern_baseUri":                       "DocumentURI",
 
 	"Or_WorkspaceFoldersServerCapabilities_changeNotifications": "string",
-	"Or_WorkspaceSymbol_location":                               "OrPLocation_workspace_symbol",
 
 	"Tuple_ParameterInformation_label_Item1": "UIntCommaUInt",
 	"WorkspaceFoldersServerCapabilities":     "WorkspaceFolders5Gn",

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -27,6 +28,8 @@ var (
 	consts = make(sortedMap[string])
 	// tsjson has 1 section
 	jsons = make(sortedMap[string])
+	// tsbuilders has 1 section (constructors, WithX methods, union wrappers)
+	builders = make(sortedMap[string])
 )
 
 func generateOutput(model *Model) {
@@ -48,6 +51,7 @@ func generateOutput(model *Model) {
 	genGenTypes() // generate the unnamed types
 	genConsts(model)
 	genMarshal()
+	genBuilders(model)
 }
 
 func genDecl(model *Model, method string, param, result *Type, dir string) {
@@ -213,40 +217,27 @@ func genStructs(model *Model) {
 		out := new(bytes.Buffer)
 		generateDoc(out, s.Documentation)
 		nm := goName(s.Name)
-		if nm == "string" { // an unacceptable strut name
-			// a weird case, and needed only so the generated code contains the old gopls code
-			nm = "DocumentDiagnosticParams"
-		}
 		fmt.Fprintf(out, "//\n")
 		out.WriteString(lspLink(model, camelCase(s.Name)))
 		fmt.Fprintf(out, "type %s struct {%s\n", nm, linex(s.Line))
 		// for gopls compatibility, embed most extensions, but expand the rest some day
 		props := slices.Clone(s.Properties)
-		if s.Name == "SymbolInformation" { // but expand this one
-			for _, ex := range s.Extends {
-				fmt.Fprintf(out, "\t// extends %s\n", ex.Name)
-				props = append(props, structures[ex.Name].Properties...)
-			}
-			genProps(out, props, nm)
-		} else {
-			genProps(out, props, nm)
-			for _, ex := range s.Extends {
-				fmt.Fprintf(out, "\t%s\n", goName(ex.Name))
-			}
+		genProps(out, props, nm)
+		for _, ex := range s.Extends {
+			fmt.Fprintf(out, "\t%s\n", goName(ex.Name))
 		}
 		for _, ex := range s.Mixins {
 			fmt.Fprintf(out, "\t%s\n", goName(ex.Name))
 		}
 		out.WriteString("}\n")
+		declare(nm)
 		types[nm] = out.String()
 	}
 
 	// base types
 	// (For URI and DocumentURI, see ../uri.go.)
+	declare("LSPAny")
 	types["LSPAny"] = "type LSPAny = any\n"
-	// A special case, the only previously existing Or type
-	types["DocumentDiagnosticReport"] = "type DocumentDiagnosticReport = Or_DocumentDiagnosticReport // (alias) \n"
-
 }
 
 // "FooBar" -> "fooBar"
@@ -264,16 +255,7 @@ func lspLink(model *Model, fragment string) string {
 
 func genProps(out *bytes.Buffer, props []NameType, name string) {
 	for _, p := range props {
-		tp := goplsName(p.Type)
-		if newNm, ok := renameProp[prop{name, p.Name}]; ok {
-			usedRenameProp[prop{name, p.Name}] = true
-			if tp == newNm {
-				log.Printf("renameProp useless {%q, %q} for %s", name, p.Name, tp)
-			}
-			tp = newNm
-		}
-		// it's a pointer if it is optional, or for gopls compatibility
-		omit, star := propStar(name, p, tp)
+		tp, omit, star := propType(name, p)
 		json := fmt.Sprintf(" `json:\"%s\"`", p.Name)
 		if omit {
 			json = fmt.Sprintf(" `json:\"%s,omitempty\"`", p.Name)
@@ -287,6 +269,18 @@ func genProps(out *bytes.Buffer, props []NameType, name string) {
 	}
 }
 
+// propType returns the Go type, omitempty-ness, and pointer-ness of a struct
+// property, applying the renameProp and propStar gopls-compatibility tables.
+func propType(structName string, p NameType) (tp string, omit, star bool) {
+	tp = goplsName(p.Type)
+	if newNm, ok := renameProp[prop{structName, p.Name}]; ok {
+		usedRenameProp[prop{structName, p.Name}] = true
+		tp = newNm
+	}
+	omit, star = propStar(structName, p, tp)
+	return
+}
+
 func genAliases(model *Model) {
 	for _, ta := range model.TypeAliases {
 		out := new(bytes.Buffer)
@@ -296,9 +290,16 @@ func genAliases(model *Model) {
 			continue // renamed the type, e.g., "DocumentDiagnosticReport", an or-type to "string"
 		}
 		tp := goplsName(ta.Type)
+		if tp == nm {
+			// the alias target now has the same clean name (e.g. Definition is the
+			// clean name of Or_Definition); the union type carries the name directly.
+			continue
+		}
 		fmt.Fprintf(out, "//\n")
 		out.WriteString(lspLink(model, camelCase(ta.Name)))
 		fmt.Fprintf(out, "type %s = %s // (alias)\n", nm, tp)
+		declare(nm)
+		aliasNames[nm] = true
 		types[nm] = out.String()
 	}
 }
@@ -313,7 +314,7 @@ func genGenTypes() {
 			fmt.Fprintf(out, "type %s struct {%s\n", nm, linex(nt.line+1))
 			genProps(out, nt.properties, nt.name) // systematic name, not gopls name; is this a good choice?
 		case "or":
-			if !strings.HasPrefix(nm, "Or") {
+			if _, collapsed := goplsType[typeNames[nt.typ]]; collapsed {
 				// It was replaced by a narrower type defined elsewhere
 				continue
 			}
@@ -324,9 +325,12 @@ func genGenTypes() {
 				}
 			}
 			sort.Strings(names)
+			fields := orFields(names)
 			fmt.Fprintf(out, "// created for Or %v\n", names)
 			fmt.Fprintf(out, "type %s struct {%s\n", nm, linex(nt.line+1))
-			fmt.Fprintf(out, "\tValue any `json:\"value\"`\n")
+			for i, fld := range fields {
+				fmt.Fprintf(out, "\t%s *%s\n", fld, names[i])
+			}
 		case "and":
 			fmt.Fprintf(out, "// created for And\n")
 			fmt.Fprintf(out, "type %s struct {%s\n", nm, linex(nt.line+1))
@@ -343,6 +347,7 @@ func genGenTypes() {
 			log.Fatalf("%s not handled", nt.kind)
 		}
 		out.WriteString("}\n")
+		declare(nm)
 		types[nm] = out.String()
 	}
 }
@@ -353,6 +358,7 @@ func genConsts(model *Model) {
 		tp := goplsName(e.Type)
 		nm := goName(e.Name)
 		fmt.Fprintf(out, "type %s %s%s\n", nm, tp, linex(e.Line))
+		declare(nm)
 		types[nm] = out.String()
 		vals := new(bytes.Buffer)
 		generateDoc(vals, e.Documentation)
@@ -382,7 +388,10 @@ func genConsts(model *Model) {
 func genMarshal() {
 	for _, nt := range genTypes {
 		nm := goplsName(nt.typ)
-		if !strings.HasPrefix(nm, "Or") {
+		if nt.kind != "or" {
+			continue
+		}
+		if _, collapsed := goplsType[typeNames[nt.typ]]; collapsed {
 			continue
 		}
 		names := []string{}
@@ -392,22 +401,24 @@ func genMarshal() {
 			}
 		}
 		sort.Strings(names)
+		fields := orFields(names)
 		var buf bytes.Buffer
 		fmt.Fprintf(&buf, "func (t %s) MarshalJSON() ([]byte, error) {\n", nm)
-		buf.WriteString("\tswitch x := t.Value.(type){\n")
-		for _, nmx := range names {
-			fmt.Fprintf(&buf, "\tcase %s:\n", nmx)
-			fmt.Fprintf(&buf, "\t\treturn json.Marshal(x)\n")
+		buf.WriteString("\tswitch {\n")
+		for _, fld := range fields {
+			fmt.Fprintf(&buf, "\tcase t.%s != nil:\n", fld)
+			fmt.Fprintf(&buf, "\t\treturn json.Marshal(*t.%s)\n", fld)
 		}
-		buf.WriteString("\tcase nil:\n\t\treturn []byte(\"null\"), nil\n\t}\n")
-		fmt.Fprintf(&buf, "\treturn nil, fmt.Errorf(\"type %%T not one of %v\", t)\n", names)
+		buf.WriteString("\t}\n")
+		buf.WriteString("\treturn []byte(\"null\"), nil\n")
 		buf.WriteString("}\n\n")
 
 		fmt.Fprintf(&buf, "func (t *%s) UnmarshalJSON(x []byte) error {\n", nm)
-		buf.WriteString("\tif string(x) == \"null\" {\n\t\tt.Value = nil\n\t\t\treturn nil\n\t}\n")
-		for i, nmx := range names {
-			fmt.Fprintf(&buf, "\tvar h%d %s\n", i, nmx)
-			fmt.Fprintf(&buf, "\tif err := json.Unmarshal(x, &h%d); err == nil {\n\t\tt.Value = h%d\n\t\t\treturn nil\n\t\t}\n", i, i)
+		fmt.Fprintf(&buf, "\t*t = %s{}\n", nm)
+		buf.WriteString("\tif string(x) == \"null\" {\n\t\treturn nil\n\t}\n")
+		for i, fld := range fields {
+			fmt.Fprintf(&buf, "\tvar h%d %s\n", i, names[i])
+			fmt.Fprintf(&buf, "\tif err := json.Unmarshal(x, &h%d); err == nil {\n\t\tt.%s = &h%d\n\t\t\treturn nil\n\t\t}\n", i, fld, i)
 		}
 		fmt.Fprintf(&buf, "return &UnmarshalError{\"unmarshal failed to match one of %v\"}", names)
 		buf.WriteString("}\n\n")
@@ -429,7 +440,174 @@ func goplsName(t *Type) string {
 		usedGoplsType[nm] = true
 		nm = newNm
 	}
+	// arrays: clean the element name, and turn arrays of exported named types
+	// into defined types, e.g. []Location -> Locations.
+	if elem, ok := strings.CutPrefix(nm, "[]"); ok {
+		elem = cleanOrPrefix(elem)
+		return "[]" + elem
+	}
+	// surviving "or" types get a clean, non-generated-sounding name
+	return cleanOrPrefix(nm)
+}
+
+// cleanOrPrefix applies cleanOrName to systematic "Or_" names, leaving others alone.
+func cleanOrPrefix(nm string) string {
+	if strings.HasPrefix(nm, "Or_") {
+		return cleanOrName(nm)
+	}
 	return nm
+}
+
+// cleanOrName turns a systematic "or" name like Or_WorkspaceSymbol_location into
+// a clean exported name like WorkspaceSymbolLocation.
+func cleanOrName(systematic string) string {
+	rest := strings.TrimPrefix(systematic, "Or_")
+	var b strings.Builder
+	for _, seg := range strings.Split(rest, "_") {
+		b.WriteString(title(seg))
+	}
+	return b.String()
+}
+
+// aliasNames records exported names that are emitted as type aliases (`type X = Y`).
+// Methods cannot be attached to aliases of non-local types.
+var aliasNames = map[string]bool{"LSPAny": true, "WatchKind": true}
+
+// declared records every top-level type name emitted, to detect conflicts.
+var declared = map[string]bool{}
+
+func declare(nm string) {
+	if declared[nm] {
+		log.Fatalf("name conflict: %q is declared more than once", nm)
+	}
+	declared[nm] = true
+}
+
+var identRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
+
+// pruneUnusedTypes removes generated synthetic types (Or/And/Literal/Tuple) that
+// nothing references. They arise when the field that would use them is overridden
+// to a different type via the renameProp/goplsType tables, leaving the generated
+// union orphaned. Real spec types (structs, enums, aliases) are always kept.
+func pruneUnusedTypes(handwritten string) {
+	// candidate set: every emitted synthetic type name.
+	synthetic := map[string]bool{}
+	for _, nt := range genTypes {
+		if nt.kind == "or" {
+			if _, collapsed := goplsType[typeNames[nt.typ]]; collapsed {
+				continue
+			}
+		}
+		synthetic[goplsName(nt.typ)] = true
+	}
+
+	// syntheticRefs returns the synthetic names mentioned in text.
+	syntheticRefs := func(text string) []string {
+		var out []string
+		for _, w := range identRe.FindAllString(text, -1) {
+			if synthetic[w] {
+				out = append(out, w)
+			}
+		}
+		return out
+	}
+
+	// text "owned" by each synthetic type (its own decl, marshal and converters),
+	// which only contributes references if that type is itself reachable.
+	owned := map[string]*strings.Builder{}
+	for s := range synthetic {
+		var b strings.Builder
+		b.WriteString(types[s])
+		b.WriteString(jsons[s])
+		owned[s] = &b
+	}
+	for k, v := range builders {
+		if i := strings.IndexByte(k, 0); i > 0 {
+			if b, ok := owned[k[:i]]; ok {
+				b.WriteString(v)
+			}
+		}
+	}
+
+	// root text: everything that is not owned by a synthetic type — non-synthetic
+	// declarations, constants, the client/server interfaces, and handwritten code.
+	var root strings.Builder
+	for k, v := range types {
+		if !synthetic[k] {
+			root.WriteString(v)
+		}
+	}
+	for _, v := range consts {
+		root.WriteString(v)
+	}
+	for _, m := range []sortedMap[string]{cdecls, ccases, cfuncs, sdecls, scases, sfuncs} {
+		for _, v := range m {
+			root.WriteString(v)
+		}
+	}
+	root.WriteString(handwritten)
+
+	// breadth-first reachability from the roots through synthetic references.
+	reached := map[string]bool{}
+	var queue []string
+	for _, s := range syntheticRefs(root.String()) {
+		if !reached[s] {
+			reached[s] = true
+			queue = append(queue, s)
+		}
+	}
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+		for _, r := range syntheticRefs(owned[s].String()) {
+			if !reached[r] {
+				reached[r] = true
+				queue = append(queue, r)
+			}
+		}
+	}
+
+	// drop unreachable synthetics from every output section.
+	for s := range synthetic {
+		if reached[s] {
+			continue
+		}
+		log.Printf("pruning unused type %s", s)
+		delete(types, s)
+		delete(jsons, s)
+		for k := range builders {
+			if i := strings.IndexByte(k, 0); i > 0 && k[:i] == s {
+				delete(builders, k)
+			}
+		}
+	}
+}
+
+// orFields maps the gopls type names of an Or type's members to valid, unique,
+// exported Go field names, aligned by index with names.
+func orFields(names []string) []string {
+	fields := make([]string, len(names))
+	seen := map[string]int{}
+	for i, n := range names {
+		f := fieldName(n)
+		if k := seen[f]; k > 0 {
+			f = fmt.Sprintf("%s%d", f, k)
+		}
+		seen[fieldName(n)]++
+		fields[i] = f
+	}
+	return fields
+}
+
+// fieldName turns a single gopls type name into an exported Go identifier.
+// e.g. "Location" -> "Location", "[]Location" -> "Locations",
+// "string" -> "String", "*Foo" -> "Foo".
+func fieldName(n string) string {
+	n = strings.TrimPrefix(n, "*")
+	if elem := strings.TrimPrefix(n, "[]"); elem != n {
+		return fieldName(elem) + "s"
+	}
+	return title(n)
 }
 
 func notNil(t *Type) bool { // shutdwon is the special case that needs this
