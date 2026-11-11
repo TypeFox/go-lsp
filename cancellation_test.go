@@ -77,6 +77,76 @@ func TestCancelRequest(t *testing.T) {
 	}
 }
 
+// TestCancelQueuedRequest verifies that a $/cancelRequest for a request that
+// is still queued behind a running one is not lost: the queued request responds
+// with -32800 and is never passed to the handler.
+func TestCancelQueuedRequest(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	queuedHandled := make(chan struct{}, 1)
+	inner := jsonrpc2.HandlerFunc(func(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+		switch req.Method {
+		case "test/blocking":
+			close(started)
+			<-release
+			return "done", nil
+		case "test/queued":
+			queuedHandled <- struct{}{}
+			return "queued", nil
+		}
+		return nil, jsonrpc2.ErrNotHandled
+	})
+	preempter, handler := lsp.CancelHandler(inner)
+	// Signal once the cancellation has been preempted, so the blocking request
+	// is only released after the queued one has been cancelled.
+	cancelSeen := make(chan struct{})
+	signalling := preempterFunc(func(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+		result, err := preempter.Preempt(ctx, req)
+		if req.Method == "$/cancelRequest" {
+			close(cancelSeen)
+		}
+		return result, err
+	})
+	conn := testConn(t, jsonrpc2.ConnectionOptions{Preempter: signalling, Handler: handler})
+
+	ctx := context.Background()
+	blocking := conn.Call(ctx, "test/blocking", nil)
+	<-started
+	queued := conn.Call(ctx, "test/queued", nil)
+	queuedId := int32(queued.ID().Raw().(int64))
+	err := conn.Notify(ctx, "$/cancelRequest", &lsp.CancelParams{
+		ID: lsp.CancelParamsIdFromInt32(queuedId),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-cancelSeen
+	close(release)
+
+	var result string
+	if err := blocking.Await(ctx, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result != "done" {
+		t.Errorf("expected result 'done', got %q", result)
+	}
+	err = queued.Await(ctx, nil)
+	if err == nil || err.Error() != lsp.RequestCancelledError.Error() {
+		t.Fatalf("expected RequestCancelledError, got %v", err)
+	}
+	select {
+	case <-queuedHandled:
+		t.Error("cancelled queued request was passed to the handler")
+	default:
+	}
+}
+
+type preempterFunc func(ctx context.Context, req *jsonrpc2.Request) (any, error)
+
+func (f preempterFunc) Preempt(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+	return f(ctx, req)
+}
+
 // TestAsyncCancelRequest verifies the combined stack (CancelHandler wrapped by
 // AsyncBinder): a $/cancelRequest cancels the targeted concurrent request with
 // -32800 while another in-flight request is unaffected and completes normally.
