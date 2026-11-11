@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/exp/jsonrpc2"
@@ -94,17 +95,47 @@ func ClientHandler(client Client) jsonrpc2.HandlerFunc {
 		if ctx.Err() != nil {
 			return nil, RequestCancelledError
 		}
-		return clientDispatch(ctx, client, req)
+		result, err := clientDispatch(ctx, client, req)
+		return nullResult(req, result, err)
 	}
 }
 
+// ServerHandler returns a jsonrpc2 handler that dispatches incoming LSP
+// messages to server.
+//
+// The handler tracks the shutdown state of the connection it serves, so a
+// separate handler must be created for every connection. Once a shutdown
+// request has been handled successfully, all further requests are answered
+// with an InvalidRequest error and all notifications except exit are dropped,
+// as mandated by the LSP specification.
 func ServerHandler(server Server) jsonrpc2.HandlerFunc {
+	var shutdown atomic.Bool
 	return func(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+		if shutdown.Load() && req.Method != "exit" {
+			if req.IsCall() {
+				return nil, fmt.Errorf("%w: %q received after shutdown", jsonrpc2.ErrInvalidRequest, req.Method)
+			}
+			return nil, nil
+		}
 		if ctx.Err() != nil {
 			return nil, RequestCancelledError
 		}
-		return serverDispatch(ctx, server, req)
+		result, err := serverDispatch(ctx, server, req)
+		if req.Method == "shutdown" && err == nil {
+			shutdown.Store(true)
+		}
+		return nullResult(req, result, err)
 	}
+}
+
+// nullResult turns the missing result of a successfully handled request
+// (such as shutdown) into a JSON null. jsonrpc2 would otherwise reject the
+// missing result and respond with an internal error.
+func nullResult(req *jsonrpc2.Request, result any, err error) (any, error) {
+	if result == nil && err == nil && req.IsCall() {
+		return json.RawMessage("null"), nil
+	}
+	return result, err
 }
 
 func Call(ctx context.Context, conn *jsonrpc2.Connection, method string, params any, result any) error {
