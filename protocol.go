@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"golang.org/x/exp/jsonrpc2"
@@ -71,13 +72,7 @@ func (c clientConn) Notify(ctx context.Context, method string, params any) error
 }
 
 func (c clientConn) Call(ctx context.Context, method string, params any, result any) error {
-	call := c.conn.Call(ctx, method, params)
-	err := call.Await(ctx, result)
-	if ctx.Err() != nil {
-		detached := detach(ctx)
-		_ = c.conn.Notify(detached, "$/cancelRequest", &CancelParams{ID: cancelParamsFromID(call.ID())})
-	}
-	return err
+	return Call(ctx, c.conn, method, params, result)
 }
 
 // ServerDispatcher returns a Server that dispatches LSP requests across the
@@ -145,7 +140,7 @@ func (b cancelBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (json
 	if opts.Framer == nil {
 		opts.Framer = jsonrpc2.HeaderFramer()
 	}
-	opts.Framer = cancelFramer{opts.Framer}
+	opts.Framer = cancelFramer{Framer: opts.Framer}
 	opts.Preempter = cancelPreempter{conn: conn, next: opts.Preempter}
 	return opts, nil
 }
@@ -193,7 +188,7 @@ type cancelFramer struct {
 }
 
 func (f cancelFramer) Writer(w io.Writer) jsonrpc2.Writer {
-	return cancelWriter{f.Framer.Writer(w)}
+	return cancelWriter{Writer: f.Framer.Writer(w)}
 }
 
 type cancelWriter struct {
@@ -207,19 +202,19 @@ func (w cancelWriter) Write(ctx context.Context, msg jsonrpc2.Message) (int64, e
 	return w.Writer.Write(ctx, msg)
 }
 
-// AsyncBinder returns a [jsonrpc2.Binder] that wraps the Handler of the
-// connection options produced by the given binder, so that each request (call)
-// runs in its own goroutine and replies asynchronously, while notifications
-// remain synchronous and are processed strictly in arrival order. A
-// notification such as 'textDocument/didChange' is therefore always applied
-// before any request that arrives after it is handled.
+// AsyncBinder returns a [jsonrpc2.Binder] that runs each request (call) of
+// the given binder's Handler in its own goroutine. Notifications are still
+// handled synchronously in arrival order, and each one waits for all earlier
+// requests to respond. A request therefore sees exactly the notifications
+// that arrived before it, and the handler only needs to synchronize state
+// shared between concurrent requests.
 //
-// Because requests may then run concurrently with each other and with
-// notifications, the wrapped handler must synchronize access to shared state
-// itself (e.g. with a sync.RWMutex around the workspace).
+// A slow request delays every notification behind it, so request handlers
+// must return promptly once their context is cancelled and must not wait for
+// a notification from the client. The context is also cancelled when the
+// connection's stream ends.
 //
-// To combine async dispatch with '$/cancelRequest' support, nest it with
-// [CancelBinder]:
+// Nest it with [CancelBinder] so that the client can cancel outdated requests:
 //
 //	binder := lsp.CancelBinder(lsp.AsyncBinder(jsonrpc2.ConnectionOptions{
 //		Handler: lsp.ServerHandler(server),
@@ -239,37 +234,96 @@ func (b asyncBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonr
 		return opts, err
 	}
 	if opts.Handler != nil {
-		opts.Handler = &asyncHandler{conn: conn, inner: opts.Handler}
+		// Cancel the running requests as soon as the stream ends. The
+		// connection cannot finish shutting down while a queued notification
+		// is waiting for them.
+		closed := make(chan struct{})
+		if opts.Framer == nil {
+			opts.Framer = jsonrpc2.HeaderFramer()
+		}
+		opts.Framer = closeFramer{
+			Framer:  opts.Framer,
+			onClose: sync.OnceFunc(func() { close(closed) }),
+		}
+		opts.Handler = &asyncHandler{conn: conn, inner: opts.Handler, closed: closed}
 	}
 	return opts, nil
+}
+
+// closeFramer wraps a framer to report when reading from the stream fails,
+// which means the connection is shutting down.
+type closeFramer struct {
+	jsonrpc2.Framer
+	onClose func()
+}
+
+func (f closeFramer) Reader(r io.Reader) jsonrpc2.Reader {
+	return closeReader{Reader: f.Framer.Reader(r), onClose: f.onClose}
+}
+
+type closeReader struct {
+	jsonrpc2.Reader
+	onClose func()
+}
+
+func (r closeReader) Read(ctx context.Context) (jsonrpc2.Message, int64, error) {
+	msg, n, err := r.Reader.Read(ctx)
+	if err != nil {
+		r.onClose()
+	}
+	return msg, n, err
 }
 
 type asyncHandler struct {
 	conn  *jsonrpc2.Connection
 	inner jsonrpc2.Handler
+	// closed is closed once the connection's stream has ended.
+	closed <-chan struct{}
+	// requests tracks the running requests. It is only added to and waited
+	// on from Handle, which the connection calls from a single goroutine.
+	requests sync.WaitGroup
 }
 
 func (h *asyncHandler) Handle(ctx context.Context, req *jsonrpc2.Request) (any, error) {
 	if !req.IsCall() {
-		// notifications are deliberately handled inline to preserve their arrival order.
+		// A notification is handled inline, after every earlier request has
+		// responded, so that messages take effect in arrival order.
+		h.requests.Wait()
 		return h.inner.Handle(ctx, req)
 	}
+	ctx, cancel := context.WithCancel(ctx)
+	// Cancel the request when the stream ends. This goroutine exits when the
+	// request has returned, at the latest.
 	go func() {
+		select {
+		case <-h.closed:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	h.requests.Go(func() {
+		defer cancel()
 		result, err := h.inner.Handle(ctx, req)
 		if errors.Is(err, jsonrpc2.ErrNotHandled) {
 			// deliverMessages would normally do this conversion; the async
 			// path bypasses it.
 			result, err = nil, fmt.Errorf("%w: %q", jsonrpc2.ErrMethodNotFound, req.Method)
 		}
+		// Respond only fails if the result cannot be marshalled or the
+		// stream is broken, and there is nobody left to report that to.
 		_ = h.conn.Respond(req.ID, result, err)
-	}()
+	})
 	return nil, jsonrpc2.ErrAsyncResponse
 }
 
+// Call invokes method on conn and waits for the result. If ctx is done before
+// the response arrives, the request is cancelled with a '$/cancelRequest'
+// notification.
 func Call(ctx context.Context, conn *jsonrpc2.Connection, method string, params any, result any) error {
 	call := conn.Call(ctx, method, params)
 	err := call.Await(ctx, result)
 	if ctx.Err() != nil {
+		// Best effort: the call has already failed with the context error.
 		_ = conn.Notify(detach(ctx), "$/cancelRequest", &CancelParams{ID: cancelParamsFromID(call.ID())})
 	}
 	return err
