@@ -59,8 +59,7 @@ func TestCancelRequest(t *testing.T) {
 			return nil, errors.New("handler was not cancelled")
 		}
 	})
-	preempter, handler := lsp.CancelHandler(slow)
-	conn := testConn(t, jsonrpc2.ConnectionOptions{Preempter: preempter, Handler: handler})
+	conn := testConn(t, lsp.CancelBinder(jsonrpc2.ConnectionOptions{Handler: slow}))
 
 	call := conn.Call(context.Background(), "test/slow", nil)
 	<-started
@@ -96,18 +95,19 @@ func TestCancelQueuedRequest(t *testing.T) {
 		}
 		return nil, jsonrpc2.ErrNotHandled
 	})
-	preempter, handler := lsp.CancelHandler(inner)
-	// Signal once the cancellation has been preempted, so the blocking request
-	// is only released after the queued one has been cancelled.
+	// A marker notification sent right after the cancellation is preempted in
+	// arrival order, so once it is seen the cancellation has been processed
+	// and the blocking request can be released. This also checks that a
+	// preempter supplied in the options keeps seeing other messages.
 	cancelSeen := make(chan struct{})
-	signalling := preempterFunc(func(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-		result, err := preempter.Preempt(ctx, req)
-		if req.Method == "$/cancelRequest" {
+	marker := preempterFunc(func(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+		if req.Method == "test/marker" {
 			close(cancelSeen)
+			return nil, nil
 		}
-		return result, err
+		return nil, jsonrpc2.ErrNotHandled
 	})
-	conn := testConn(t, jsonrpc2.ConnectionOptions{Preempter: signalling, Handler: handler})
+	conn := testConn(t, lsp.CancelBinder(jsonrpc2.ConnectionOptions{Preempter: marker, Handler: inner}))
 
 	ctx := context.Background()
 	blocking := conn.Call(ctx, "test/blocking", nil)
@@ -118,6 +118,9 @@ func TestCancelQueuedRequest(t *testing.T) {
 		ID: lsp.CancelParamsIdFromInt32(queuedId),
 	})
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.Notify(ctx, "test/marker", nil); err != nil {
 		t.Fatal(err)
 	}
 	<-cancelSeen
@@ -147,7 +150,7 @@ func (f preempterFunc) Preempt(ctx context.Context, req *jsonrpc2.Request) (any,
 	return f(ctx, req)
 }
 
-// TestAsyncCancelRequest verifies the combined stack (CancelHandler wrapped by
+// TestAsyncCancelRequest verifies the combined stack (CancelBinder around
 // AsyncBinder): a $/cancelRequest cancels the targeted concurrent request with
 // -32800 while another in-flight request is unaffected and completes normally.
 func TestAsyncCancelRequest(t *testing.T) {
@@ -169,11 +172,7 @@ func TestAsyncCancelRequest(t *testing.T) {
 		}
 		return nil, jsonrpc2.ErrNotHandled
 	})
-	preempter, handler := lsp.CancelHandler(inner)
-	conn := testConn(t, lsp.AsyncBinder(jsonrpc2.ConnectionOptions{
-		Preempter: preempter,
-		Handler:   handler,
-	}))
+	conn := testConn(t, lsp.CancelBinder(lsp.AsyncBinder(jsonrpc2.ConnectionOptions{Handler: inner})))
 
 	ctx := context.Background()
 	slow := conn.Call(ctx, "test/slow", nil)

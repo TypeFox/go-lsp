@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"golang.org/x/exp/jsonrpc2"
@@ -109,57 +108,59 @@ func ServerHandler(server Server) jsonrpc2.HandlerFunc {
 	}
 }
 
-// CancelHandler returns a jsonrpc2.Preempter and jsonrpc2.Handler pair that
-// implement LSP '$/cancelRequest' support around the given handler. Install
-// both on the same connection:
+// CancelBinder returns a [jsonrpc2.Binder] that adds LSP '$/cancelRequest'
+// support to the connection options produced by the given binder. Since
+// [jsonrpc2.ConnectionOptions] is itself a binder, the simple case is:
 //
-//	preempter, handler := lsp.CancelHandler(lsp.ServerHandler(server))
-//	opts := jsonrpc2.ConnectionOptions{Preempter: preempter, Handler: handler}
+//	binder := lsp.CancelBinder(jsonrpc2.ConnectionOptions{
+//		Handler: lsp.ServerHandler(server),
+//	})
+//	conn, err := jsonrpc2.Dial(ctx, dialer, binder)
 //
-// The preempter sees every message before it is queued. It registers each
-// request (call) as it arrives and intercepts '$/cancelRequest' notifications,
-// so a request can be cancelled both while it is being handled and while it is
-// still waiting in the queue. An in-flight request has its context cancelled and
-// a queued request is never passed to the wrapped handler. Either way the
-// request responds with RequestCancelledError (-32800). A cancellation for an
-// unknown or already answered request is a no-op.
+// The binder installs a preempter that intercepts '$/cancelRequest'
+// notifications before they are queued and cancels the matching request through
+// [jsonrpc2.Connection.Cancel]. The connection tracks every request from the
+// moment it is read, so a request can be cancelled both while it is being
+// handled and while it is still waiting in the queue. An in-flight request has
+// its context cancelled and a queued request is never passed to the handler.
+// Either way the request responds with RequestCancelledError (-32800). A
+// cancellation for an unknown or already answered request is a no-op.
 //
-// The returned pair keeps per-connection state keyed by request ID, so create
-// one pair per connection (e.g. from a jsonrpc2.Binder) rather than sharing it
-// between connections.
+// A Preempter already present in the options still sees every other message.
 //
-// When combined with [AsyncBinder], wrap with CancelHandler first, then pass the
-// resulting options to [AsyncBinder]. See the [AsyncBinder] documentation for the
-// full example and why the nesting order matters.
-func CancelHandler(handler jsonrpc2.Handler) (jsonrpc2.Preempter, jsonrpc2.Handler) {
-	c := &canceller{handler: handler, pending: make(map[jsonrpc2.ID]*pendingCall)}
-	return c, c
+// CancelBinder composes with [AsyncBinder] in either order.
+func CancelBinder(binder jsonrpc2.Binder) jsonrpc2.Binder {
+	return cancelBinder{inner: binder}
 }
 
-type canceller struct {
-	handler jsonrpc2.Handler
-	mu      sync.Mutex
-	pending map[jsonrpc2.ID]*pendingCall
+type cancelBinder struct {
+	inner jsonrpc2.Binder
 }
 
-// pendingCall tracks a request from the moment the preempter sees it until its
-// handler returns. It is guarded by canceller.mu.
-type pendingCall struct {
-	// cancelled records a '$/cancelRequest' that arrived while the request
-	// was still queued, before Handle could install cancel.
-	cancelled bool
-	// cancel cancels the handling context; nil until Handle is running.
-	cancel context.CancelFunc
+func (b cancelBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
+	opts, err := b.inner.Bind(ctx, conn)
+	if err != nil {
+		return opts, err
+	}
+	if opts.Framer == nil {
+		opts.Framer = jsonrpc2.HeaderFramer()
+	}
+	opts.Framer = cancelFramer{opts.Framer}
+	opts.Preempter = cancelPreempter{conn: conn, next: opts.Preempter}
+	return opts, nil
 }
 
-func (c *canceller) Preempt(ctx context.Context, req *jsonrpc2.Request) (any, error) {
+// cancelPreempter handles '$/cancelRequest' and passes every other message on
+// to the next preempter, if any.
+type cancelPreempter struct {
+	conn *jsonrpc2.Connection
+	next jsonrpc2.Preempter
+}
+
+func (p cancelPreempter) Preempt(ctx context.Context, req *jsonrpc2.Request) (any, error) {
 	if req.Method != "$/cancelRequest" {
-		if req.IsCall() {
-			// Register the request before it is queued, so that a
-			// cancellation arriving ahead of Handle is not lost.
-			c.mu.Lock()
-			c.pending[req.ID] = &pendingCall{}
-			c.mu.Unlock()
+		if p.next != nil {
+			return p.next.Preempt(ctx, req)
 		}
 		return nil, jsonrpc2.ErrNotHandled
 	}
@@ -176,81 +177,67 @@ func (c *canceller) Preempt(ctx context.Context, req *jsonrpc2.Request) (any, er
 	default:
 		return nil, fmt.Errorf("%w: $/cancelRequest without a request ID", jsonrpc2.ErrInvalidParams)
 	}
-	c.mu.Lock()
-	if call := c.pending[id]; call != nil {
-		call.cancelled = true
-		if call.cancel != nil {
-			call.cancel()
-		}
-	}
-	c.mu.Unlock()
+	p.conn.Cancel(id)
 	return nil, nil
 }
 
-func (c *canceller) Handle(ctx context.Context, req *jsonrpc2.Request) (any, error) {
-	if !req.IsCall() {
-		return c.handler.Handle(ctx, req)
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	c.mu.Lock()
-	call := c.pending[req.ID]
-	if call == nil {
-		// Not seen by Preempt: the canceller is installed as handler only.
-		call = &pendingCall{}
-		c.pending[req.ID] = call
-	}
-	if call.cancelled {
-		// Cancelled while still queued; never start the handler.
-		delete(c.pending, req.ID)
-		c.mu.Unlock()
-		cancel()
-		return nil, RequestCancelledError
-	}
-	call.cancel = cancel
-	c.mu.Unlock()
-	defer func() {
-		c.mu.Lock()
-		delete(c.pending, req.ID)
-		c.mu.Unlock()
-		cancel()
-	}()
-	result, err := c.handler.Handle(ctx, req)
-	if err != nil && ctx.Err() != nil {
-		return nil, RequestCancelledError
-	}
-	return result, err
+// cancelFramer wraps a framer so that responses failing with context.Canceled
+// are sent as RequestCancelledError.
+//
+// This translation lives in the framing layer because it is the only hook the
+// connection offers for it: a request cancelled while still queued is answered
+// by the connection itself with the raw context error, without ever reaching a
+// handler that could map it.
+type cancelFramer struct {
+	jsonrpc2.Framer
 }
 
-// AsyncBinder returns a [jsonrpc2.Binder] that installs the given options with
-// their Handler wrapped so that each request (call) runs in its own goroutine
-// and replies asynchronously, while notifications remain synchronous and are
-// processed strictly in arrival order. A notification such as
-// 'textDocument/didChange' is therefore always applied before any request that
-// arrives after it is handled.
+func (f cancelFramer) Writer(w io.Writer) jsonrpc2.Writer {
+	return cancelWriter{f.Framer.Writer(w)}
+}
+
+type cancelWriter struct {
+	jsonrpc2.Writer
+}
+
+func (w cancelWriter) Write(ctx context.Context, msg jsonrpc2.Message) (int64, error) {
+	if resp, ok := msg.(*jsonrpc2.Response); ok && errors.Is(resp.Error, context.Canceled) {
+		resp.Error = RequestCancelledError
+	}
+	return w.Writer.Write(ctx, msg)
+}
+
+// AsyncBinder returns a [jsonrpc2.Binder] that wraps the Handler of the
+// connection options produced by the given binder, so that each request (call)
+// runs in its own goroutine and replies asynchronously, while notifications
+// remain synchronous and are processed strictly in arrival order. A
+// notification such as 'textDocument/didChange' is therefore always applied
+// before any request that arrives after it is handled.
 //
 // Because requests may then run concurrently with each other and with
 // notifications, the wrapped handler must synchronize access to shared state
 // itself (e.g. with a sync.RWMutex around the workspace).
 //
-// To combine async dispatch with '$/cancelRequest' support, wrap the handler
-// with [CancelHandler] first and give the resulting options to AsyncBinder:
+// To combine async dispatch with '$/cancelRequest' support, nest it with
+// [CancelBinder]:
 //
-//	preempter, handler := lsp.CancelHandler(lsp.ServerHandler(server))
-//	binder := lsp.AsyncBinder(jsonrpc2.ConnectionOptions{
-//		Preempter: preempter,
-//		Handler:   handler,
-//	})
+//	binder := lsp.CancelBinder(lsp.AsyncBinder(jsonrpc2.ConnectionOptions{
+//		Handler: lsp.ServerHandler(server),
+//	}))
 //	conn, err := jsonrpc2.Dial(ctx, dialer, binder)
-func AsyncBinder(opts jsonrpc2.ConnectionOptions) jsonrpc2.Binder {
-	return asyncBinder{opts: opts}
+func AsyncBinder(binder jsonrpc2.Binder) jsonrpc2.Binder {
+	return asyncBinder{inner: binder}
 }
 
 type asyncBinder struct {
-	opts jsonrpc2.ConnectionOptions
+	inner jsonrpc2.Binder
 }
 
 func (b asyncBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
-	opts := b.opts
+	opts, err := b.inner.Bind(ctx, conn)
+	if err != nil {
+		return opts, err
+	}
 	if opts.Handler != nil {
 		opts.Handler = &asyncHandler{conn: conn, inner: opts.Handler}
 	}
