@@ -95,12 +95,12 @@ func TestShutdown(t *testing.T) {
 
 	t.Run("ShutdownSucceeds", func(t *testing.T) {
 		impl := &lifecycleServer{exited: make(chan struct{})}
-		client := connectLifecycleServer(t, impl)
+		server := connectLifecycleServer(t, impl)
 
-		if _, err := client.Hover(ctx, &lsp.HoverParams{}); err != nil {
+		if _, err := server.Hover(ctx, &lsp.HoverParams{}); err != nil {
 			t.Fatalf("Hover before shutdown failed: %v", err)
 		}
-		if err := client.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(ctx); err != nil {
 			t.Fatalf("Shutdown failed: %v", err)
 		}
 		if got := impl.shutdowns.Load(); got != 1 {
@@ -110,13 +110,13 @@ func TestShutdown(t *testing.T) {
 
 	t.Run("RequestsAfterShutdownAreInvalid", func(t *testing.T) {
 		impl := &lifecycleServer{exited: make(chan struct{})}
-		client := connectLifecycleServer(t, impl)
+		server := connectLifecycleServer(t, impl)
 
-		if err := client.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(ctx); err != nil {
 			t.Fatalf("Shutdown failed: %v", err)
 		}
 
-		_, err := client.Hover(ctx, &lsp.HoverParams{})
+		_, err := server.Hover(ctx, &lsp.HoverParams{})
 		if err == nil {
 			t.Fatal("Expected Hover after shutdown to fail")
 		}
@@ -128,7 +128,7 @@ func TestShutdown(t *testing.T) {
 		}
 
 		// A second shutdown is a request like any other.
-		err = client.Shutdown(ctx)
+		err = server.Shutdown(ctx)
 		if err == nil {
 			t.Fatal("Expected second Shutdown to fail")
 		}
@@ -142,17 +142,17 @@ func TestShutdown(t *testing.T) {
 
 	t.Run("NotificationsAfterShutdownAreDropped", func(t *testing.T) {
 		impl := &lifecycleServer{exited: make(chan struct{})}
-		client := connectLifecycleServer(t, impl)
+		server := connectLifecycleServer(t, impl)
 
-		if err := client.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(ctx); err != nil {
 			t.Fatalf("Shutdown failed: %v", err)
 		}
-		if err := client.DidOpen(ctx, &lsp.DidOpenTextDocumentParams{}); err != nil {
+		if err := server.DidOpen(ctx, &lsp.DidOpenTextDocumentParams{}); err != nil {
 			t.Fatalf("DidOpen failed: %v", err)
 		}
 		// Messages are handled in order, so once exit has arrived the
 		// preceding didOpen has been processed as well.
-		if err := client.Exit(ctx); err != nil {
+		if err := server.Exit(ctx); err != nil {
 			t.Fatalf("Exit failed: %v", err)
 		}
 		select {
@@ -167,9 +167,9 @@ func TestShutdown(t *testing.T) {
 
 	t.Run("ExitWithoutShutdown", func(t *testing.T) {
 		impl := &lifecycleServer{exited: make(chan struct{})}
-		client := connectLifecycleServer(t, impl)
+		server := connectLifecycleServer(t, impl)
 
-		if err := client.Exit(ctx); err != nil {
+		if err := server.Exit(ctx); err != nil {
 			t.Fatalf("Exit failed: %v", err)
 		}
 		select {
